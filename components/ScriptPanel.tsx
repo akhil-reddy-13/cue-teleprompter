@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { estimateSeconds, tokenize } from "@/lib/script";
 import { formatDuration } from "@/lib/format";
 import type { PrompterSettings } from "@/lib/types";
-import { PanelHeader, Pill, SliderRow, cx } from "@/components/ui";
+import { Button, Note, PanelHeader, Pill, SliderRow } from "@/components/ui";
 
 const SAMPLE = `Hey — quick one.
 
@@ -72,39 +72,20 @@ export default function ScriptPanel({
           className="min-h-[180px] flex-1 resize-none rounded-xl border border-ink-700 bg-ink-900 p-3 leading-relaxed text-ink-100 outline-none placeholder:text-ink-500 focus:border-ink-500"
         />
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={pasteFromClipboard}
-            className="rounded-lg bg-ink-800 px-3 py-1.5 text-xs font-medium text-ink-200 transition hover:bg-ink-700 hover:text-white"
-          >
-            Paste from clipboard
-          </button>
-          <button
-            type="button"
-            onClick={() => onPatch({ script: SAMPLE })}
-            className="rounded-lg bg-ink-800 px-3 py-1.5 text-xs font-medium text-ink-200 transition hover:bg-ink-700 hover:text-white"
-          >
+        <div className="flex flex-wrap gap-1.5">
+          <Button onClick={pasteFromClipboard}>Paste from clipboard</Button>
+          <Button onClick={() => onPatch({ script: SAMPLE })}>
             Load sample
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
             onClick={() => onPatch({ script: "" })}
             disabled={prompter.script.length === 0}
-            className={cx(
-              "rounded-lg px-3 py-1.5 text-xs font-medium transition",
-              prompter.script.length === 0
-                ? "cursor-not-allowed bg-ink-850 text-ink-600"
-                : "bg-ink-800 text-ink-200 hover:bg-ink-700 hover:text-white",
-            )}
           >
             Clear
-          </button>
+          </Button>
         </div>
 
-        {pasteError && (
-          <p className="text-[11px] text-amber-300">{pasteError}</p>
-        )}
+        {pasteError && <Note tone="warn">{pasteError}</Note>}
 
         <div className="space-y-2 rounded-xl border border-ink-800 bg-ink-900/60 p-3">
           <SliderRow
