@@ -417,29 +417,51 @@ export function Sheet({
   children: ReactNode;
 }) {
   const [dragY, setDragY] = useState(0);
-  const dragRef = useRef<{ startY: number; pointerId: number } | null>(null);
+  const dragRef = useRef<{
+    startY: number;
+    pointerId: number;
+    captured: boolean;
+  } | null>(null);
 
   const onPointerDown = (event: ReactPointerEvent) => {
-    dragRef.current = { startY: event.clientY, pointerId: event.pointerId };
-    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+    dragRef.current = {
+      startY: event.clientY,
+      pointerId: event.pointerId,
+      captured: false,
+    };
   };
 
   const onPointerMove = (event: ReactPointerEvent) => {
     const drag = dragRef.current;
     if (!drag) return;
+    const delta = event.clientY - drag.startY;
+
+    /**
+     * Capture lazily, only once this is clearly a drag.
+     *
+     * Capturing on pointerdown makes Chrome dispatch the following `click` to
+     * the capturing element rather than whatever is under the pointer, which
+     * silently killed the close button living inside this same wrapper.
+     */
+    if (!drag.captured && Math.abs(delta) > 4) {
+      (event.currentTarget as HTMLElement).setPointerCapture?.(
+        event.pointerId,
+      );
+      drag.captured = true;
+    }
     // Downward only: dragging up shouldn't detach the sheet from the edge.
-    setDragY(Math.max(0, event.clientY - drag.startY));
+    if (drag.captured) setDragY(Math.max(0, delta));
   };
 
   const endDrag = (event: ReactPointerEvent) => {
     const drag = dragRef.current;
     dragRef.current = null;
-    if (drag) {
+    if (drag?.captured) {
       (event.currentTarget as HTMLElement).releasePointerCapture?.(
         drag.pointerId,
       );
+      if (dragY > 96) onClose();
     }
-    if (dragY > 96) onClose();
     setDragY(0);
   };
 

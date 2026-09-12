@@ -381,10 +381,24 @@ export default function Teleprompter({
           />
         </div>
 
+        {/* Lines above the reading line have already been said, so let them
+            recede. It makes the next line the brightest thing on screen. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 z-[15]"
+          style={{
+            // Stops short of the reading line so the line you're actually on
+            // stays at full brightness instead of straddling the veil's edge.
+            height: `${FOCUS_RATIO * 100 - 7}%`,
+            background:
+              "linear-gradient(to bottom, rgba(5,6,9,0.58) 0%, rgba(5,6,9,0.3) 60%, rgba(5,6,9,0) 100%)",
+          }}
+        />
+
         {/* Reading line */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 z-10 h-20 -translate-y-1/2"
+          className="pointer-events-none absolute inset-x-0 z-[15] h-20 -translate-y-1/2"
           style={{
             top: `${FOCUS_RATIO * 100}%`,
             background:
@@ -393,7 +407,7 @@ export default function Teleprompter({
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
+          className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
           style={{ top: `${FOCUS_RATIO * 100}%` }}
         >
           <span className="h-px w-2.5 bg-accent" />

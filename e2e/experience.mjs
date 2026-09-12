@@ -88,6 +88,36 @@ export default async function run() {
         .isVisible()
         .catch(() => false);
       check("swiping the handle down dismisses it", !open);
+
+      // The close button lives inside the drag area. Capturing the pointer too
+      // eagerly makes Chrome deliver the click to the wrapper instead, which
+      // is exactly how this button got silently broken once already.
+      await page.getByRole("button", { name: "Script", exact: true }).click();
+      await page.waitForTimeout(350);
+      await page.getByRole("button", { name: "Close Script" }).click();
+      await page.waitForTimeout(350);
+      const afterClose = await page
+        .getByRole("dialog")
+        .isVisible()
+        .catch(() => false);
+      check("the close button inside the drag area still works", !afterClose);
+
+      // And a tap on the handle must not be mistaken for a dismiss gesture.
+      await page.getByRole("button", { name: "Script", exact: true }).click();
+      await page.waitForTimeout(350);
+      const tap = await page.evaluate(() => {
+        const rect = document
+          .querySelector('[role="dialog"]')
+          .getBoundingClientRect();
+        return { x: rect.left + rect.width / 2, y: rect.top + 8 };
+      });
+      await page.mouse.click(tap.x, tap.y);
+      await page.waitForTimeout(350);
+      const afterTap = await page
+        .getByRole("dialog")
+        .isVisible()
+        .catch(() => false);
+      check("tapping the handle leaves the sheet open", afterTap);
     }
 
     // ---- orientation ------------------------------------------------------

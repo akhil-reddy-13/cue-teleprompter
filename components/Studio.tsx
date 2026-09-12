@@ -533,6 +533,16 @@ export default function Studio() {
   // -------------------------------------------------------------------- render
 
   const showScreen = studio.sourceMode !== "camera";
+
+  /**
+   * Mirroring the preview is a comfort feature — it makes the picture behave
+   * like a mirror when you're looking at yourself. On a rear camera you're
+   * looking at the world, so flipping it just reverses any text in the shot.
+   * The recording toggle is a deliberate creative choice and stays honoured.
+   */
+  const usingRearCamera =
+    studio.videoDeviceId === null && studio.facing === "environment";
+  const previewMirrored = studio.mirrorPreview && !usingRearCamera;
   const cameraIsPip = studio.sourceMode === "screen+camera";
   const pip = cameraIsPip ? pipRect(frame.w, frame.h) : null;
 
@@ -545,7 +555,7 @@ export default function Studio() {
         borderRadius: Math.round(Math.min(pip.w, pip.h) * 0.08),
         boxShadow: "0 0 0 1.5px rgba(255,255,255,0.35)",
         opacity: 1,
-        transform: studio.mirrorPreview ? "scaleX(-1)" : undefined,
+        transform: previewMirrored ? "scaleX(-1)" : undefined,
       }
     : {
         left: 0,
@@ -553,7 +563,7 @@ export default function Studio() {
         width: frame.w || "100%",
         height: frame.h || "100%",
         opacity: studio.sourceMode === "screen" ? 0 : 1,
-        transform: studio.mirrorPreview ? "scaleX(-1)" : undefined,
+        transform: previewMirrored ? "scaleX(-1)" : undefined,
       };
 
   const formatLabel = recorder.format
@@ -597,6 +607,7 @@ export default function Studio() {
           onClose={() => setActivePanel(null)}
           heardWpm={voice.heardWpm}
           voiceListening={voice.listening}
+          lastHeard={voice.lastHeard}
         />
       );
     }
@@ -617,6 +628,7 @@ export default function Studio() {
           voiceSupported={voice.supported}
           recordingActive={recorder.isActive}
           formatLabel={formatLabel}
+          rearCameraActive={usingRearCamera}
         />
       );
     }
