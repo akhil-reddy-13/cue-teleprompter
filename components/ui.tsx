@@ -1,6 +1,11 @@
 "use client";
 
-import type { CSSProperties, ReactNode } from "react";
+import { useRef, useState } from "react";
+import type {
+  CSSProperties,
+  PointerEvent as ReactPointerEvent,
+  ReactNode,
+} from "react";
 import { CloseIcon } from "@/components/icons";
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
@@ -390,5 +395,89 @@ export function Note({
     >
       {children}
     </p>
+  );
+}
+
+/* ------------------------------------------------------------------- sheet */
+
+/**
+ * Mobile bottom sheet with a grab handle and swipe-to-dismiss.
+ *
+ * The drag listeners live on the handle and header only. Putting them on the
+ * whole sheet would fight the scroll gesture inside the script editor, which
+ * is the one thing people do most in here.
+ */
+export function Sheet({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const [dragY, setDragY] = useState(0);
+  const dragRef = useRef<{ startY: number; pointerId: number } | null>(null);
+
+  const onPointerDown = (event: ReactPointerEvent) => {
+    dragRef.current = { startY: event.clientY, pointerId: event.pointerId };
+    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+  };
+
+  const onPointerMove = (event: ReactPointerEvent) => {
+    const drag = dragRef.current;
+    if (!drag) return;
+    // Downward only: dragging up shouldn't detach the sheet from the edge.
+    setDragY(Math.max(0, event.clientY - drag.startY));
+  };
+
+  const endDrag = (event: ReactPointerEvent) => {
+    const drag = dragRef.current;
+    dragRef.current = null;
+    if (drag) {
+      (event.currentTarget as HTMLElement).releasePointerCapture?.(
+        drag.pointerId,
+      );
+    }
+    if (dragY > 96) onClose();
+    setDragY(0);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      <button
+        type="button"
+        aria-label="Close panel"
+        onClick={onClose}
+        className="fade-in absolute inset-0 bg-black/65 backdrop-blur-sm"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className={cx(
+          "absolute inset-x-0 bottom-0 flex max-h-[86dvh] flex-col rounded-t-[20px] bg-ink-950 shadow-stage ring-1 ring-inset ring-ink-800 [padding-bottom:env(safe-area-inset-bottom)]",
+          dragY === 0 && "sheet-in",
+        )}
+        style={{
+          transform: dragY ? `translateY(${dragY}px)` : undefined,
+          transition: dragRef.current ? "none" : "transform 220ms cubic-bezier(0.2,0.9,0.25,1)",
+        }}
+      >
+        <div
+          className="shrink-0 cursor-grab touch-none active:cursor-grabbing"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+        >
+          <div className="flex justify-center pt-2.5 pb-1">
+            <span aria-hidden className="h-1 w-9 rounded-full bg-ink-700" />
+          </div>
+          <PanelHeader title={title} onClose={onClose} />
+        </div>
+        {children}
+      </div>
+    </div>
   );
 }
