@@ -34,6 +34,7 @@ type Props = {
   onClose: () => void;
   heardWpm: number | null;
   voiceListening: boolean;
+  lastHeard: string;
   embedded?: boolean;
 };
 
@@ -43,6 +44,7 @@ export default function ScriptPanel({
   onClose,
   heardWpm,
   voiceListening,
+  lastHeard,
   embedded = false,
 }: Props) {
   const [pasteError, setPasteError] = useState<string | null>(null);
@@ -162,6 +164,13 @@ export default function ScriptPanel({
               </button>
             ))}
           </div>
+
+          {voiceListening && lastHeard && (
+            <p className="truncate text-[11px] text-ink-500">
+              Heard{" "}
+              <span className="text-ink-300">&ldquo;{lastHeard}&rdquo;</span>
+            </p>
+          )}
 
           {heardWpm !== null && heardWpm !== prompter.wpm && (
             <button

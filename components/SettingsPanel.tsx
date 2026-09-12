@@ -63,6 +63,7 @@ type Props = {
   voiceSupported: boolean;
   recordingActive: boolean;
   formatLabel: string;
+  rearCameraActive: boolean;
   embedded?: boolean;
 };
 
@@ -80,6 +81,7 @@ export default function SettingsPanel({
   voiceSupported,
   recordingActive,
   formatLabel,
+  rearCameraActive,
   embedded = false,
 }: Props) {
   const activeAspect = ASPECTS.find((a) => a.key === studio.aspect);
@@ -229,7 +231,11 @@ export default function SettingsPanel({
               label="Mirror my preview"
               checked={studio.mirrorPreview}
               onChange={(mirrorPreview) => onStudioPatch({ mirrorPreview })}
-              hint="Looks like a mirror to you. Doesn't touch the file."
+              hint={
+                rearCameraActive
+                  ? "Ignored on the rear camera — flipping it would only reverse text in the shot."
+                  : "Looks like a mirror to you. Doesn't touch the file."
+              }
             />
             <Toggle
               label="Mirror the recording too"
