@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
+import CameraGate from "@/components/CameraGate";
 import ControlBar, { type PanelKey } from "@/components/ControlBar";
 import FillLight from "@/components/FillLight";
 import ScriptPanel from "@/components/ScriptPanel";
@@ -29,14 +30,13 @@ import { useCamera, useScreenShare } from "@/lib/useMediaSources";
 import { useRecorder, type CompositeConfig } from "@/lib/useRecorder";
 import { useVoiceSync } from "@/lib/useVoiceSync";
 import {
-  CameraIcon,
   CloseIcon,
   FilmIcon,
   ScriptIcon,
   SlidersIcon,
   SparkIcon,
 } from "@/components/icons";
-import { Button, Note, PanelHeader, Pill, cx } from "@/components/ui";
+import { Note, Pill, Sheet, cx } from "@/components/ui";
 
 const STUDIO_KEY = "cue.studio.v2";
 const PROMPTER_KEY = "cue.prompter.v2";
@@ -97,6 +97,7 @@ export default function Studio() {
   // Only one of the sidebar / bottom sheet is mounted. CSS-only hiding would
   // keep both trees alive, duplicating the script box and every take's <video>.
   const isDesktop = useMediaQuery("(min-width: 1024px)");
+  const isLandscape = useMediaQuery("(orientation: landscape)");
 
   const ratio = aspectRatioOf(studio.aspect);
   const parsed = useMemo(() => parseScript(prompter.script), [prompter.script]);
@@ -571,6 +572,21 @@ export default function Studio() {
 
   const panelKey: PanelKey = activePanel ?? "script";
 
+  // "1080p" means the short edge, so a 9:16 take is 1080p and not 1920p.
+  const resolutionLabel = (() => {
+    const { width, height } = outputSize(studio.aspect, studio.quality);
+    return `${Math.min(width, height)}p`;
+  })();
+
+  // A vertical frame inside a landscape phone viewport leaves a sliver of
+  // preview; say so rather than letting it look broken.
+  const showRotateHint =
+    isTouchPortrait === true &&
+    isLandscape === true &&
+    ratio <= 1 &&
+    camera.status === "live" &&
+    !recorder.isActive;
+
   const panelContent = (embedded: boolean) => {
     if (panelKey === "script") {
       return (
@@ -629,7 +645,7 @@ export default function Studio() {
       <FillLight brightness={studio.fillLight} warmth={studio.fillWarmth} />
 
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="relative z-20 flex shrink-0 items-center justify-between gap-3 px-4 pt-[max(env(safe-area-inset-top),0.65rem)] pb-2.5">
+        <header className="relative z-20 flex shrink-0 items-center justify-between gap-3 px-4 pt-[max(env(safe-area-inset-top),0.65rem)] pb-2.5 [@media(max-height:560px)]:pb-1.5 [@media(max-height:560px)]:pt-[max(env(safe-area-inset-top),0.35rem)]">
           <div className="flex min-w-0 items-center gap-2.5">
             <span
               aria-hidden
@@ -679,6 +695,13 @@ export default function Studio() {
                 "radial-gradient(65% 55% at 50% 42%, rgba(60,68,88,0.22) 0%, rgba(0,0,0,0) 72%)",
             }}
           />
+          {showRotateHint && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-1 z-30 flex justify-center px-3">
+              <span className="whitespace-nowrap rounded-full bg-ink-800/90 px-2.5 py-1 text-[10.5px] font-medium text-ink-200 ring-1 ring-inset ring-ink-700 backdrop-blur-md">
+                Hold your phone upright for a bigger preview
+              </span>
+            </div>
+          )}
           <div
             data-stage-frame
             className="relative shrink-0 overflow-hidden rounded-[20px] bg-black shadow-stage ring-1 ring-white/[0.09]"
@@ -704,7 +727,7 @@ export default function Studio() {
               style={cameraStyle}
             />
 
-            {frame.h > 0 && (
+            {frame.h > 0 && !showSplash && (
               <Teleprompter
                 settings={prompter}
                 running={prompterRunning}
@@ -757,42 +780,17 @@ export default function Studio() {
             )}
 
             {showSplash && (
-              <div className="fade-in absolute inset-0 z-40 flex flex-col items-center justify-center gap-5 bg-ink-950/94 p-6 text-center">
-                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink-900 ring-1 ring-inset ring-ink-800">
-                  <CameraIcon className="h-6 w-6 text-ink-400" />
-                </span>
-                <div className="max-w-[17rem] space-y-2">
-                  <p className="text-base font-semibold tracking-tight text-white">
-                    {camera.status === "error"
-                      ? "Camera unavailable"
-                      : "Turn on your camera"}
-                  </p>
-                  <p className="text-xs leading-relaxed text-ink-400">
-                    {camera.error ??
-                      "Your video never leaves this device — there's no server for it to go to."}
-                  </p>
-                </div>
-                <div className="flex flex-col items-center gap-2.5">
-                  <Button
-                    size="md"
-                    variant="primary"
-                    onClick={() => void startCamera()}
-                  >
-                    {camera.status === "error" ? "Try again" : "Enable camera"}
-                  </Button>
-                  {screen.supported && (
-                    <Button
-                      variant="quiet"
-                      onClick={() => {
-                        patchStudio({ sourceMode: "screen" });
-                        void toggleScreenShare();
-                      }}
-                    >
-                      Record my screen instead
-                    </Button>
-                  )}
-                </div>
-              </div>
+              <CameraGate
+                firstRun={!studioStatus.hadStored}
+                errored={camera.status === "error"}
+                message={camera.error}
+                onEnable={() => void startCamera()}
+                screenSupported={screen.supported}
+                onScreenInstead={() => {
+                  patchStudio({ sourceMode: "screen" });
+                  void toggleScreenShare();
+                }}
+              />
             )}
 
             {camera.status === "starting" && (
@@ -854,7 +852,7 @@ export default function Studio() {
           }
           recordDisabled={recordDisabled}
           formatLabel={recorder.format?.ext.toUpperCase() ?? "—"}
-          resolutionLabel={`${outputSize(studio.aspect, studio.quality).height}p`}
+          resolutionLabel={resolutionLabel}
         />
       </main>
 
@@ -891,27 +889,18 @@ export default function Studio() {
 
       {/* Mobile sheet */}
       {isDesktop === false && activePanel && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close panel"
-            onClick={() => setActivePanel(null)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          />
-          <div className="absolute inset-x-0 bottom-0 flex max-h-[84dvh] flex-col rounded-t-2xl border-t border-ink-700 bg-ink-950 [padding-bottom:env(safe-area-inset-bottom)]">
-            <PanelHeader
-              title={
-                activePanel === "script"
-                  ? "Script"
-                  : activePanel === "setup"
-                    ? "Setup"
-                    : "Takes"
-              }
-              onClose={() => setActivePanel(null)}
-            />
-            {panelContent(true)}
-          </div>
-        </div>
+        <Sheet
+          title={
+            activePanel === "script"
+              ? "Script"
+              : activePanel === "setup"
+                ? "Setup"
+                : "Takes"
+          }
+          onClose={() => setActivePanel(null)}
+        >
+          {panelContent(true)}
+        </Sheet>
       )}
     </div>
   );
