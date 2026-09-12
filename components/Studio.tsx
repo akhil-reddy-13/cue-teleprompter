@@ -8,8 +8,8 @@ import ScriptPanel from "@/components/ScriptPanel";
 import SettingsPanel from "@/components/SettingsPanel";
 import TakesPanel from "@/components/TakesPanel";
 import Teleprompter from "@/components/Teleprompter";
-import { clamp } from "@/lib/format";
-import { pipRect } from "@/lib/layout";
+import { clamp, formatClock } from "@/lib/format";
+import { outputSize, pipRect } from "@/lib/layout";
 import { parseScript } from "@/lib/script";
 import {
   DEFAULT_PROMPTER,
@@ -30,12 +30,13 @@ import { useRecorder, type CompositeConfig } from "@/lib/useRecorder";
 import { useVoiceSync } from "@/lib/useVoiceSync";
 import {
   CameraIcon,
+  CloseIcon,
   FilmIcon,
   ScriptIcon,
   SlidersIcon,
   SparkIcon,
 } from "@/components/icons";
-import { PanelHeader, Pill, cx } from "@/components/ui";
+import { Button, Note, PanelHeader, Pill, cx } from "@/components/ui";
 
 const STUDIO_KEY = "cue.studio.v2";
 const PROMPTER_KEY = "cue.prompter.v2";
@@ -628,19 +629,27 @@ export default function Studio() {
       <FillLight brightness={studio.fillLight} warmth={studio.fillWarmth} />
 
       <main className="relative z-10 flex min-w-0 flex-1 flex-col">
-        <header className="relative z-20 flex shrink-0 items-center justify-between gap-3 px-4 pt-[max(env(safe-area-inset-top),0.6rem)] pb-2">
-          <div className="flex items-baseline gap-2">
-            <h1 className="text-sm font-bold tracking-tight text-white">Cue</h1>
-            <p className="hidden text-[11px] text-ink-500 sm:block">
+        <header className="relative z-20 flex shrink-0 items-center justify-between gap-3 px-4 pt-[max(env(safe-area-inset-top),0.65rem)] pb-2.5">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span
+              aria-hidden
+              className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[7px] bg-ink-100"
+            >
+              <span className="h-2.5 w-2.5 rounded-full bg-accent" />
+            </span>
+            <h1 className="text-[15px] font-semibold tracking-tight text-white">
+              Cue
+            </h1>
+            <p className="hidden truncate text-[11px] text-ink-500 md:block">
               Teleprompter + recorder. No watermark, no trial, nothing leaves
               your device.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5">
             {prompter.voiceSync && (
               <Pill tone={voice.listening ? "accent" : "neutral"}>
                 <SparkIcon className="h-3 w-3" />
-                {voice.listening ? "Following you" : "Voice sync"}
+                {voice.listening ? "Following" : "Voice sync"}
               </Pill>
             )}
             <Pill>{effectiveWpm} wpm</Pill>
@@ -648,18 +657,31 @@ export default function Studio() {
         </header>
 
         {!secureContext && (
-          <div className="relative z-20 mx-4 mb-2 rounded-lg bg-amber-400/15 px-3 py-2 text-[11px] text-amber-200 ring-1 ring-amber-400/30">
-            Cameras need a secure connection. Open this over HTTPS or on
-            localhost.
+          <div className="relative z-20 mx-4 mb-2">
+            <Note tone="warn">
+              Cameras need a secure connection. Open this over HTTPS or on
+              localhost.
+            </Note>
           </div>
         )}
 
         <div
           ref={stageRef}
-          className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-1 sm:px-4"
+          className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-1.5 sm:px-5"
         >
+          {/* Ambient wash so the space around a letterboxed frame reads as
+              deliberate rather than empty. */}
           <div
-            className="relative shrink-0 overflow-hidden rounded-2xl bg-black shadow-[0_24px_70px_-24px_rgba(0,0,0,0.95)] ring-1 ring-white/10"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 -z-10 opacity-70"
+            style={{
+              background:
+                "radial-gradient(65% 55% at 50% 42%, rgba(60,68,88,0.22) 0%, rgba(0,0,0,0) 72%)",
+            }}
+          />
+          <div
+            data-stage-frame
+            className="relative shrink-0 overflow-hidden rounded-[20px] bg-black shadow-stage ring-1 ring-white/[0.09]"
             style={{
               width: frame.w || undefined,
               height: frame.h || undefined,
@@ -696,83 +718,109 @@ export default function Studio() {
             )}
 
             {recorder.isActive && (
-              <div className="absolute bottom-3 left-3 z-30 flex items-center gap-1.5 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+              <div
+                data-rec-badge
+                className="fade-in absolute bottom-3 left-3 z-30 flex items-center gap-2 rounded-full bg-black/60 py-1 pl-2 pr-2.5 text-[11px] font-semibold tabular-nums text-white ring-1 ring-inset ring-white/10 backdrop-blur-md"
+              >
                 <span
                   className={cx(
-                    "h-2 w-2 rounded-full bg-accent",
-                    recorder.status === "recording" && "rec-dot",
+                    "h-2 w-2 rounded-full",
+                    recorder.status === "paused"
+                      ? "bg-ink-400"
+                      : "rec-dot bg-accent",
                   )}
                 />
-                {recorder.status === "paused" ? "PAUSED" : "REC"}
+                {recorder.status === "paused"
+                  ? "Paused"
+                  : formatClock(recorder.elapsedMs)}
               </div>
             )}
 
             {countdownLeft !== null && countdownLeft > 0 && (
-              <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/45">
+              <div
+                className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3"
+                style={{
+                  background:
+                    "radial-gradient(60% 50% at 50% 50%, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.3) 100%)",
+                }}
+              >
                 <span
                   key={countdownLeft}
-                  className="countdown-num text-[22vmin] font-bold leading-none text-white [text-shadow:0_6px_40px_rgba(0,0,0,0.6)]"
+                  className="countdown-num text-[24vmin] font-semibold leading-none tracking-tight text-white [text-shadow:0_8px_48px_rgba(0,0,0,0.7)]"
                 >
                   {countdownLeft}
+                </span>
+                <span className="text-xs font-medium text-white/70">
+                  Look at the lens
                 </span>
               </div>
             )}
 
             {showSplash && (
-              <div className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-4 bg-ink-950/92 p-6 text-center">
-                <CameraIcon className="h-8 w-8 text-ink-500" />
-                <div className="max-w-xs space-y-1.5">
-                  <p className="text-sm font-semibold text-white">
+              <div className="fade-in absolute inset-0 z-40 flex flex-col items-center justify-center gap-5 bg-ink-950/94 p-6 text-center">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-ink-900 ring-1 ring-inset ring-ink-800">
+                  <CameraIcon className="h-6 w-6 text-ink-400" />
+                </span>
+                <div className="max-w-[17rem] space-y-2">
+                  <p className="text-base font-semibold tracking-tight text-white">
                     {camera.status === "error"
                       ? "Camera unavailable"
                       : "Turn on your camera"}
                   </p>
                   <p className="text-xs leading-relaxed text-ink-400">
                     {camera.error ??
-                      "Your video never leaves this device — there's no server to send it to."}
+                      "Your video never leaves this device — there's no server for it to go to."}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => void startCamera()}
-                  className="rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-ink-950 transition hover:bg-ink-300"
-                >
-                  {camera.status === "error" ? "Try again" : "Enable camera"}
-                </button>
-                {screen.supported && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      patchStudio({ sourceMode: "screen" });
-                      void toggleScreenShare();
-                    }}
-                    className="text-xs font-medium text-ink-400 underline decoration-ink-600 underline-offset-4 transition hover:text-white"
+                <div className="flex flex-col items-center gap-2.5">
+                  <Button
+                    size="md"
+                    variant="primary"
+                    onClick={() => void startCamera()}
                   >
-                    Record my screen instead
-                  </button>
-                )}
+                    {camera.status === "error" ? "Try again" : "Enable camera"}
+                  </Button>
+                  {screen.supported && (
+                    <Button
+                      variant="quiet"
+                      onClick={() => {
+                        patchStudio({ sourceMode: "screen" });
+                        void toggleScreenShare();
+                      }}
+                    >
+                      Record my screen instead
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
 
             {camera.status === "starting" && (
-              <div className="absolute inset-0 z-30 flex items-center justify-center bg-ink-950/60 text-xs text-ink-300">
-                Starting camera…
+              <div className="fade-in absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-ink-950/70">
+                <span className="h-5 w-5 animate-spin rounded-full border-2 border-ink-700 border-t-ink-200" />
+                <span className="text-xs font-medium text-ink-400">
+                  Starting camera…
+                </span>
               </div>
             )}
           </div>
         </div>
 
         {toast && (
-          <div className="relative z-30 mx-auto mb-1 max-w-xl px-4">
-            <div className="flex items-start gap-2 rounded-xl bg-ink-800/95 px-3 py-2 text-[11px] leading-relaxed text-ink-200 ring-1 ring-ink-700 backdrop-blur">
+          <div
+            role="status"
+            aria-live="polite"
+            className="toast-in relative z-30 mx-auto mb-1.5 w-full max-w-md px-4"
+          >
+            <div className="flex items-start gap-2.5 rounded-xl bg-ink-800/95 py-2.5 pl-3 pr-2 text-[11.5px] leading-relaxed text-ink-200 shadow-lift ring-1 ring-inset ring-ink-700 backdrop-blur-md">
               <span className="flex-1">{toast}</span>
               <button
                 type="button"
                 onClick={() => setToast(null)}
-                className="shrink-0 font-semibold text-ink-400 hover:text-white"
-                aria-label="Dismiss"
+                className="-mt-0.5 shrink-0 rounded-md p-1 text-ink-500 transition hover:bg-ink-700 hover:text-white"
+                aria-label="Dismiss message"
               >
-                ✕
+                <CloseIcon className="h-3.5 w-3.5" />
               </button>
             </div>
           </div>
@@ -784,6 +832,7 @@ export default function Studio() {
           elapsedMs={recorder.elapsedMs}
           recordedBytes={recorder.recordedBytes}
           countdownLeft={countdownLeft}
+          countdownTotal={studio.countdown}
           onRecordToggle={() => void handleRecordToggle()}
           onPauseToggle={handlePauseToggle}
           prompterRunning={prompterRunning}
@@ -804,6 +853,8 @@ export default function Studio() {
             setActivePanel((current) => (current === panel ? null : panel))
           }
           recordDisabled={recordDisabled}
+          formatLabel={recorder.format?.ext.toUpperCase() ?? "—"}
+          resolutionLabel={`${outputSize(studio.aspect, studio.quality).height}p`}
         />
       </main>
 

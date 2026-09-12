@@ -102,14 +102,18 @@ export default function Teleprompter({
     );
   }, [blocks]);
 
-  // Scale type with the panel so the same setting reads sensibly on a phone
-  // and on a wide desktop frame.
+  /**
+   * Scale type off the panel's *height*, not its width. Height is what decides
+   * how many lines are visible at once, so this keeps a 16:9 desktop frame and
+   * a 9:16 phone frame showing roughly the same amount of script — scaling by
+   * width instead made wide frames show barely two lines.
+   */
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const observer = new ResizeObserver(() => {
-      const width = viewport.clientWidth;
-      if (width > 0) setFontScale(clamp(width / 520, 0.6, 1.3));
+      const height = viewport.clientHeight;
+      if (height > 0) setFontScale(clamp(height / 300, 0.55, 1.6));
       measure();
     });
     observer.observe(viewport);
@@ -337,39 +341,74 @@ export default function Teleprompter({
 
   if (!settings.visible) return null;
 
+  const backdrop = settings.opacity / 100;
+  // The blurred layer is masked separately from the colour wash: without it the
+  // blur keeps a hard rectangular edge even as the tint fades out, which cuts a
+  // visible seam across the middle of the shot.
+  const softEdge = "linear-gradient(to bottom, #000 0%, #000 84%, transparent 100%)";
+
   return (
     <div
-      className="pointer-events-auto absolute inset-x-0 top-0 z-20 flex flex-col"
+      className="pointer-events-auto absolute inset-x-0 top-0 z-20"
       style={{ height: `${settings.heightPct}%` }}
     >
-      <div
-        className="relative flex-1 overflow-hidden"
-        style={{
-          background: `rgba(6, 7, 10, ${settings.opacity / 100})`,
-          backdropFilter: settings.opacity > 12 ? "blur(3px)" : undefined,
-          WebkitBackdropFilter:
-            settings.opacity > 12 ? "blur(3px)" : undefined,
-        }}
-      >
+      <div className="relative h-full overflow-hidden">
+        {backdrop > 0.12 && (
+          <div
+            aria-hidden
+            className="absolute inset-0"
+            style={{
+              backdropFilter: "blur(4px)",
+              WebkitBackdropFilter: "blur(4px)",
+              maskImage: softEdge,
+              WebkitMaskImage: softEdge,
+            }}
+          />
+        )}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{
+            background: `linear-gradient(to bottom, rgba(5,6,9,${backdrop}) 0%, rgba(5,6,9,${backdrop}) 78%, rgba(5,6,9,0) 100%)`,
+          }}
+        />
+
+        {/* Progress hairline, read like a scrubber along the top of the frame */}
+        <div className="absolute inset-x-0 top-0 z-20 h-[2px] bg-white/10">
+          <div
+            className="h-full bg-accent transition-[width] duration-200 ease-linear"
+            style={{ width: `${clamp(progress * 100, 0, 100)}%` }}
+          />
+        </div>
+
         {/* Reading line */}
         <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 z-10 h-20 -translate-y-1/2"
+          style={{
+            top: `${FOCUS_RATIO * 100}%`,
+            background:
+              "radial-gradient(58% 100% at 24% 50%, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 100%)",
+          }}
+        />
+        <div
+          aria-hidden
           className="pointer-events-none absolute inset-x-0 z-10 flex items-center"
           style={{ top: `${FOCUS_RATIO * 100}%` }}
-          aria-hidden
         >
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-accent/70 to-transparent" />
+          <span className="h-px w-2.5 bg-accent" />
+          <span className="h-px flex-1 bg-gradient-to-r from-accent/55 via-accent/18 to-transparent" />
         </div>
-        <div
-          className="pointer-events-none absolute z-10 -translate-y-1/2"
-          style={{ top: `${FOCUS_RATIO * 100}%`, left: 0 }}
-          aria-hidden
-        >
-          <div className="h-0 w-0 border-y-[5px] border-l-[7px] border-y-transparent border-l-accent" />
-        </div>
+
+        {totalWords > 0 && (
+          <span className="pointer-events-none absolute right-2 top-3 z-20 rounded-md bg-black/45 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-white/70 ring-1 ring-inset ring-white/10 backdrop-blur-sm">
+            {formatClock(secondsLeft * 1000)} left
+          </span>
+        )}
 
         <div
           ref={viewportRef}
-          className="prompter-fade h-full cursor-grab touch-none select-none overflow-hidden active:cursor-grabbing"
+          className="prompter-fade relative h-full cursor-grab touch-none select-none overflow-hidden active:cursor-grabbing"
           onWheel={onWheel}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -381,22 +420,26 @@ export default function Teleprompter({
         >
           <div
             ref={contentRef}
-            className="px-[5%] will-change-transform"
+            className="px-[5.5%] will-change-transform"
             style={{
+              // ~44 characters per line. Long lines mean long eye travel away
+              // from the lens, which defeats the point of a prompter.
+              maxWidth: "22em",
               paddingTop: `${FOCUS_RATIO * 100}%`,
               paddingBottom: `${(1 - FOCUS_RATIO) * 100}%`,
               fontSize: `${fontPx}px`,
               lineHeight: settings.lineHeight,
               fontWeight: settings.bold ? 650 : 450,
-              letterSpacing: "-0.01em",
+              letterSpacing: "-0.018em",
+              textWrap: "pretty",
               transform: "translate3d(0, 0, 0)",
               ...(settings.mirrorText ? { scale: "-1 1" } : {}),
             }}
           >
             {totalWords === 0 ? (
-              <p className="text-ink-400">
-                Paste your script in the Script panel and it will scroll here
-                while you record.
+              <p className="text-[0.42em] font-medium leading-relaxed text-ink-400">
+                Your script scrolls here while you record. Open the Script
+                panel to paste it in.
               </p>
             ) : (
               blocks.map((block, index) =>
@@ -416,7 +459,7 @@ export default function Teleprompter({
                     ref={(el) => {
                       blockRefs.current[index] = el;
                     }}
-                    className="text-white [text-shadow:0_2px_14px_rgba(0,0,0,0.85)]"
+                    className="text-white [text-shadow:0_2px_16px_rgba(0,0,0,0.9)]"
                   >
                     {block.text}
                   </p>
@@ -425,19 +468,6 @@ export default function Teleprompter({
             )}
           </div>
         </div>
-      </div>
-
-      {/* Progress + remaining time */}
-      <div className="relative h-[3px] w-full bg-black/50">
-        <div
-          className="h-full bg-accent transition-[width] duration-200 ease-linear"
-          style={{ width: `${clamp(progress * 100, 0, 100)}%` }}
-        />
-        {totalWords > 0 && (
-          <span className="absolute right-1.5 top-2 rounded bg-black/55 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-ink-300">
-            {formatClock(secondsLeft * 1000)} left
-          </span>
-        )}
       </div>
     </div>
   );
