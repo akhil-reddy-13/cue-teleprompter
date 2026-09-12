@@ -68,6 +68,29 @@ not sleep, and per-take download.
 | `↑` `↓` | Scroll speed ±5 wpm |
 | `Esc` | Close the open panel |
 
+## Tests
+
+The suite drives the real app in real Chrome against a synthetic camera, so the
+recording pipeline is exercised end to end rather than mocked. It needs Google
+Chrome installed; no browser download.
+
+```bash
+npm run dev                  # one shell
+npm run test:e2e             # another
+npm run test:e2e recording   # or a single suite
+npm run typecheck
+```
+
+`e2e/recording.mjs` covers camera startup, prompter motion and rate, and that a
+take comes out at the dimensions that were framed — the property the whole
+canvas compositor exists to guarantee. `e2e/experience.mjs` covers first run,
+sheet gestures, orientation, and whether the chrome tells the truth about what
+is being recorded.
+
+One wrinkle worth knowing: `--use-fake-ui-for-media-stream` makes Chrome report
+camera permission as already *granted*, so the app auto-starts and the camera
+gate never appears. Anything testing the gate launches without that flag.
+
 ## Notes
 
 Takes are held in memory as blobs and are intentionally not persisted —
@@ -80,8 +103,9 @@ Screen capture is unavailable on mobile browsers; the option hides itself.
 
 ```
 app/          route shell, global styles, icon
-components/   Studio (orchestrator), Teleprompter, ControlBar, panels
+components/   Studio (orchestrator), Teleprompter, ControlBar, panels, ui primitives
 lib/          recorder, media sources, voice sync, canvas layout math, hooks
+e2e/          browser suite driven against a synthetic camera
 ```
 
 `lib/useRecorder.ts` owns the canvas compositor and MediaRecorder.
