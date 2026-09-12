@@ -1,6 +1,13 @@
 "use client";
 
-import { ASPECTS, type AspectKey, type PrompterSettings, type QualityKey, type SourceMode, type StudioSettings } from "@/lib/types";
+import type { ReactNode } from "react";
+import {
+  ASPECTS,
+  type PrompterSettings,
+  type QualityKey,
+  type SourceMode,
+  type StudioSettings,
+} from "@/lib/types";
 import type { DeviceInfo } from "@/lib/useMediaSources";
 import {
   Button,
@@ -15,6 +22,32 @@ import {
   Toggle,
   cx,
 } from "@/components/ui";
+
+/** A card of hairline-divided rows, so stacked toggles stop reading as a wall. */
+function Rows({ children }: { children: ReactNode }) {
+  return (
+    <div className="divide-y divide-ink-850 overflow-hidden rounded-xl bg-ink-900 ring-1 ring-inset ring-ink-850 [&>*]:px-3 [&>*]:py-2.5">
+      {children}
+    </div>
+  );
+}
+
+function Section({
+  title,
+  aside,
+  children,
+}: {
+  title: string;
+  aside?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-2.5 border-t border-ink-850 pt-5 first:border-0 first:pt-0">
+      <SectionTitle aside={aside}>{title}</SectionTitle>
+      {children}
+    </section>
+  );
+}
 
 type Props = {
   studio: StudioSettings;
@@ -49,55 +82,60 @@ export default function SettingsPanel({
   formatLabel,
   embedded = false,
 }: Props) {
-  const sourceOptions: { value: SourceMode; label: string }[] = [
-    { value: "camera", label: "Camera" },
-    { value: "screen", label: "Screen" },
-    { value: "screen+camera", label: "Both" },
-  ];
+  const activeAspect = ASPECTS.find((a) => a.key === studio.aspect);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {!embedded && <PanelHeader title="Setup" onClose={onClose} />}
 
-      <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 pb-8">
-        <section className="space-y-3">
-          <SectionTitle>Frame</SectionTitle>
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 pb-10">
+        <Section
+          title="Frame"
+          aside={
+            activeAspect ? (
+              <span className="text-[10px] font-medium text-ink-600">
+                {activeAspect.hint}
+              </span>
+            ) : undefined
+          }
+        >
           <div className="grid grid-cols-5 gap-1.5">
-            {ASPECTS.map((aspect) => (
-              <button
-                key={aspect.key}
-                type="button"
-                title={aspect.hint}
-                aria-pressed={studio.aspect === aspect.key}
-                onClick={() => onStudioPatch({ aspect: aspect.key })}
-                className={cx(
-                  "flex flex-col items-center gap-1.5 rounded-xl px-1 py-2 text-[10px] font-semibold transition",
-                  studio.aspect === aspect.key
-                    ? "bg-white text-ink-950"
-                    : "bg-ink-850 text-ink-300 ring-1 ring-ink-700/70 hover:bg-ink-800 hover:text-white",
-                )}
-              >
-                <span
+            {ASPECTS.map((aspect) => {
+              const active = studio.aspect === aspect.key;
+              return (
+                <button
+                  key={aspect.key}
+                  type="button"
+                  title={aspect.hint}
+                  aria-pressed={active}
+                  onClick={() => onStudioPatch({ aspect: aspect.key })}
                   className={cx(
-                    "block rounded-[3px] border-[1.5px]",
-                    studio.aspect === aspect.key
-                      ? "border-ink-950"
-                      : "border-ink-400",
+                    "flex flex-col items-center gap-2 rounded-xl px-1 py-2.5 text-[10px] font-semibold transition duration-150",
+                    active
+                      ? "bg-ink-100 text-ink-950"
+                      : "bg-ink-900 text-ink-400 ring-1 ring-inset ring-ink-850 hover:bg-ink-850 hover:text-ink-200",
                   )}
-                  style={{
-                    width: aspect.ratio >= 1 ? 22 : 22 * aspect.ratio,
-                    height: aspect.ratio >= 1 ? 22 / aspect.ratio : 22,
-                  }}
-                />
-                {aspect.label}
-              </button>
-            ))}
+                >
+                  <span
+                    className={cx(
+                      "block rounded-[3px] border-[1.5px]",
+                      active ? "border-ink-950" : "border-ink-500",
+                    )}
+                    style={{
+                      width: aspect.ratio >= 1 ? 22 : 22 * aspect.ratio,
+                      height: aspect.ratio >= 1 ? 22 / aspect.ratio : 22,
+                    }}
+                  />
+                  {aspect.label}
+                </button>
+              );
+            })}
           </div>
-          <p className="text-[11px] text-ink-500">
-            {ASPECTS.find((a) => a.key === studio.aspect)?.hint}
-          </p>
 
-          <Field label="Resolution">
+          <Field
+            label="Resolution"
+            hint={`Recording as ${formatLabel}. No watermark, ever.`}
+          >
             <Segmented<QualityKey>
               ariaLabel="Resolution"
               value={studio.quality}
@@ -108,13 +146,16 @@ export default function SettingsPanel({
               ]}
             />
           </Field>
-          <p className="text-[11px] text-ink-500">
-            Recording as {formatLabel}. No watermark, ever.
-          </p>
-        </section>
 
-        <section className="space-y-3">
-          <SectionTitle>Capture</SectionTitle>
+          {recordingActive && (
+            <Note tone="warn">
+              Changing the frame mid-take shifts what gets recorded. Safer to
+              stop first.
+            </Note>
+          )}
+        </Section>
+
+        <Section title="Capture">
           <Segmented<SourceMode>
             ariaLabel="What to capture"
             value={studio.sourceMode}
@@ -122,8 +163,13 @@ export default function SettingsPanel({
               onStudioPatch({ sourceMode });
               if (sourceMode !== "camera" && !screenActive) onToggleScreen();
             }}
-            options={sourceOptions}
+            options={[
+              { value: "camera", label: "Camera" },
+              { value: "screen", label: "Screen" },
+              { value: "screen+camera", label: "Both" },
+            ]}
           />
+
           {!screenSupported && (
             <Note tone="warn">
               Screen recording isn&apos;t supported on this device — phones
@@ -178,26 +224,28 @@ export default function SettingsPanel({
             </Field>
           )}
 
-          <Toggle
-            label="Mirror my preview"
-            checked={studio.mirrorPreview}
-            onChange={(mirrorPreview) => onStudioPatch({ mirrorPreview })}
-            hint="Looks like a mirror to you. Doesn't affect the file."
-          />
-          <Toggle
-            label="Mirror the recording too"
-            checked={studio.mirrorRecording}
-            onChange={(mirrorRecording) => onStudioPatch({ mirrorRecording })}
-            hint="Leave off unless you want the flipped look — on-screen text reads backwards when it's on."
-          />
+          <Rows>
+            <Toggle
+              label="Mirror my preview"
+              checked={studio.mirrorPreview}
+              onChange={(mirrorPreview) => onStudioPatch({ mirrorPreview })}
+              hint="Looks like a mirror to you. Doesn't touch the file."
+            />
+            <Toggle
+              label="Mirror the recording too"
+              checked={studio.mirrorRecording}
+              onChange={(mirrorRecording) =>
+                onStudioPatch({ mirrorRecording })
+              }
+              hint="Leave off unless you want the flipped look — on-screen text reads backwards with it on."
+            />
+          </Rows>
 
           <Field label="Countdown">
             <Segmented<string>
               ariaLabel="Countdown"
               value={String(studio.countdown)}
-              onChange={(value) =>
-                onStudioPatch({ countdown: Number(value) })
-              }
+              onChange={(value) => onStudioPatch({ countdown: Number(value) })}
               options={[
                 { value: "0", label: "Off" },
                 { value: "3", label: "3s" },
@@ -206,15 +254,9 @@ export default function SettingsPanel({
               ]}
             />
           </Field>
-        </section>
+        </Section>
 
-        <section className="space-y-3">
-          <SectionTitle>Prompter</SectionTitle>
-          <Toggle
-            label="Show the script over the video"
-            checked={prompter.visible}
-            onChange={(visible) => onPromptPatch({ visible })}
-          />
+        <Section title="Prompter">
           <SliderRow
             label="Text size"
             value={prompter.fontSize}
@@ -247,25 +289,34 @@ export default function SettingsPanel({
             max={92}
             suffix="%"
             onChange={(opacity) => onPromptPatch({ opacity })}
+            hint="How much the panel dims the video behind your words."
           />
-          <Toggle
-            label="Heavier text"
-            checked={prompter.bold}
-            onChange={(bold) => onPromptPatch({ bold })}
-          />
-          <Toggle
-            label="Mirror the text"
-            checked={prompter.mirrorText}
-            onChange={(mirrorText) => onPromptPatch({ mirrorText })}
-            hint="For beam-splitter teleprompter rigs."
-          />
-          <div className="space-y-2 rounded-xl border border-ink-800 bg-ink-900/60 p-3">
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-medium text-ink-200">
-                Follow my voice
-              </span>
-              <Pill tone="accent">Beta</Pill>
-            </div>
+
+          <Rows>
+            <Toggle
+              label="Show the script over the video"
+              checked={prompter.visible}
+              onChange={(visible) => onPromptPatch({ visible })}
+            />
+            <Toggle
+              label="Heavier text"
+              checked={prompter.bold}
+              onChange={(bold) => onPromptPatch({ bold })}
+            />
+            <Toggle
+              label="Mirror the text"
+              checked={prompter.mirrorText}
+              onChange={(mirrorText) => onPromptPatch({ mirrorText })}
+              hint="For beam-splitter teleprompter rigs."
+            />
+          </Rows>
+        </Section>
+
+        <Section
+          title="Follow my voice"
+          aside={<Pill tone="accent">Beta</Pill>}
+        >
+          <Rows>
             <Toggle
               label="Match the scroll to my speaking pace"
               checked={prompter.voiceSync}
@@ -273,15 +324,20 @@ export default function SettingsPanel({
               onChange={(voiceSync) => onPromptPatch({ voiceSync })}
               hint={
                 voiceSupported
-                  ? "Listens, finds your place in the script, and speeds up or slows down to stay with you. Chrome sends audio to Google for recognition."
+                  ? "Listens, finds your place in the script, and speeds up or slows down to stay with you."
                   : "Needs a browser with speech recognition — Chrome, Edge or Safari."
               }
             />
-          </div>
-        </section>
+          </Rows>
+          {voiceSupported && prompter.voiceSync && (
+            <Note>
+              Chrome sends recognition audio to Google. Your recording still
+              never leaves the device.
+            </Note>
+          )}
+        </Section>
 
-        <section className="space-y-3">
-          <SectionTitle>Fill light</SectionTitle>
+        <Section title="Fill light">
           <SliderRow
             label="Brightness"
             value={studio.fillLight}
@@ -289,6 +345,7 @@ export default function SettingsPanel({
             max={100}
             suffix="%"
             onChange={(fillLight) => onStudioPatch({ fillLight })}
+            progress="#ffe3b0"
             hint="Glows the area around the frame to light your face. Never appears in the recording."
           />
           <SliderRow
@@ -298,15 +355,16 @@ export default function SettingsPanel({
             max={100}
             suffix="%"
             onChange={(fillWarmth) => onStudioPatch({ fillWarmth })}
+            progress="#ffd6a2"
+            display={
+              studio.fillWarmth < 33
+                ? "Daylight"
+                : studio.fillWarmth < 67
+                  ? "Neutral"
+                  : "Warm"
+            }
           />
-        </section>
-
-        {recordingActive && (
-          <Note tone="warn">
-            Changing the frame mid-take can shift what gets recorded. Safer to
-            stop first.
-          </Note>
-        )}
+        </Section>
       </div>
     </div>
   );

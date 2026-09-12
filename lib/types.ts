@@ -34,6 +34,8 @@ export type Take = {
   createdAt: number;
   width: number;
   height: number;
+  /** Small JPEG data URL of the final frame, used as the takes-list poster. */
+  poster: string | null;
 };
 
 export type PrompterSettings = {
