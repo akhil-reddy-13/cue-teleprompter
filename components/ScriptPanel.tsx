@@ -4,7 +4,15 @@ import { useMemo, useState } from "react";
 import { estimateSeconds, tokenize } from "@/lib/script";
 import { formatDuration } from "@/lib/format";
 import type { PrompterSettings } from "@/lib/types";
-import { Button, Note, PanelHeader, Pill, SliderRow } from "@/components/ui";
+import { SparkIcon } from "@/components/icons";
+import {
+  Button,
+  Note,
+  PanelHeader,
+  SectionTitle,
+  SliderRow,
+  cx,
+} from "@/components/ui";
 
 const SAMPLE = `Hey — quick one.
 
@@ -13,6 +21,12 @@ I got tired of teleprompter apps that promise "free" and then stamp a watermark 
 Paste a script here. Hit record. It scrolls at your pace, right under the lens, so you're looking straight down the barrel the whole time.
 
 No account. No trial. No watermark. The file lands in your downloads folder and that's the end of it.`;
+
+const PRESETS = [
+  { label: "Measured", wpm: 120 },
+  { label: "Natural", wpm: 145 },
+  { label: "Brisk", wpm: 175 },
+];
 
 type Props = {
   prompter: PrompterSettings;
@@ -58,18 +72,36 @@ export default function ScriptPanel({
       {!embedded && <PanelHeader title="Script" onClose={onClose} />}
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <Pill>{wordCount} words</Pill>
-          <Pill>≈ {formatDuration(seconds * 1000)}</Pill>
-          {voiceListening && <Pill tone="accent">Listening</Pill>}
+        {/* Read-time summary: the two numbers that actually matter when you're
+            deciding whether a script fits the video you're making. */}
+        <div className="flex items-stretch gap-2">
+          <div className="flex-1 rounded-xl bg-ink-900 px-3 py-2 ring-1 ring-inset ring-ink-850">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-600">
+              Words
+            </div>
+            <div
+              data-word-count
+              className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-white"
+            >
+              {wordCount}
+            </div>
+          </div>
+          <div className="flex-1 rounded-xl bg-ink-900 px-3 py-2 ring-1 ring-inset ring-ink-850">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-600">
+              Runs about
+            </div>
+            <div className="mt-0.5 text-lg font-semibold tabular-nums leading-none text-white">
+              {wordCount === 0 ? "—" : formatDuration(seconds * 1000)}
+            </div>
+          </div>
         </div>
 
         <textarea
           value={prompter.script}
           onChange={(event) => onPatch({ script: event.target.value })}
-          placeholder="Paste or type your script here. Blank lines become breathing room while it scrolls."
+          placeholder="Paste or type your script here.&#10;&#10;Blank lines become breathing room while it scrolls."
           spellCheck
-          className="min-h-[180px] flex-1 resize-none rounded-xl border border-ink-700 bg-ink-900 p-3 leading-relaxed text-ink-100 outline-none placeholder:text-ink-500 focus:border-ink-500"
+          className="min-h-[160px] flex-1 resize-none rounded-xl bg-ink-900 p-3.5 text-[13.5px] leading-[1.65] text-ink-100 ring-1 ring-inset ring-ink-850 outline-none transition placeholder:text-ink-600 hover:ring-ink-800 focus:ring-ink-600"
         />
 
         <div className="flex flex-wrap gap-1.5">
@@ -87,24 +119,61 @@ export default function ScriptPanel({
 
         {pasteError && <Note tone="warn">{pasteError}</Note>}
 
-        <div className="space-y-2 rounded-xl border border-ink-800 bg-ink-900/60 p-3">
+        <div className="space-y-3 rounded-xl bg-ink-900 p-3 ring-1 ring-inset ring-ink-850">
+          <SectionTitle
+            aside={
+              voiceListening ? (
+                <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-accent-soft">
+                  <SparkIcon className="h-3 w-3" />
+                  Listening
+                </span>
+              ) : undefined
+            }
+          >
+            Pace
+          </SectionTitle>
+
           <SliderRow
             label="Scroll speed"
             value={prompter.wpm}
             min={70}
             max={260}
+            display={`${prompter.wpm} wpm`}
             onChange={(wpm) => onPatch({ wpm })}
-            suffix=" wpm"
-            hint="Conversational delivery is around 140–160 wpm."
           />
-          {heardWpm !== null && (
+
+          <div className="flex gap-1.5">
+            {PRESETS.map((preset) => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => onPatch({ wpm: preset.wpm })}
+                className={cx(
+                  "flex-1 rounded-lg py-1.5 text-[11px] font-medium transition-colors",
+                  prompter.wpm === preset.wpm
+                    ? "bg-ink-700 text-white ring-1 ring-inset ring-ink-600"
+                    : "bg-ink-850 text-ink-400 hover:text-ink-200",
+                )}
+              >
+                {preset.label}
+                <span className="ml-1 tabular-nums text-ink-500">
+                  {preset.wpm}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {heardWpm !== null && heardWpm !== prompter.wpm && (
             <button
               type="button"
               onClick={() => onPatch({ wpm: heardWpm })}
-              className="w-full rounded-lg bg-accent/15 px-3 py-1.5 text-left text-[11px] font-medium text-accent-soft ring-1 ring-accent/30 transition hover:bg-accent/25"
+              className="flex w-full items-center gap-2 rounded-lg bg-accent/10 px-2.5 py-2 text-left text-[11px] font-medium text-accent-soft ring-1 ring-inset ring-accent/25 transition hover:bg-accent/18"
             >
-              You&apos;re speaking at ~{heardWpm} wpm — tap to match the scroll
-              to it.
+              <SparkIcon className="h-3.5 w-3.5 shrink-0" />
+              <span>
+                You&apos;re speaking at about {heardWpm} wpm — tap to match the
+                scroll to it.
+              </span>
             </button>
           )}
         </div>

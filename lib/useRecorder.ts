@@ -33,6 +33,30 @@ type UseRecorderArgs = {
 };
 
 const FPS = 30;
+/** Long edge of the takes-list thumbnail. */
+const POSTER_EDGE = 360;
+
+/**
+ * Downsample the last composited frame into a small JPEG. The compositor
+ * canvas still holds it at this point, so a real thumbnail costs nothing
+ * beyond one scaled drawImage.
+ */
+function capturePoster(canvas: HTMLCanvasElement): string | null {
+  try {
+    const scale = POSTER_EDGE / Math.max(canvas.width, canvas.height);
+    if (!Number.isFinite(scale) || scale <= 0) return null;
+    const thumb = document.createElement("canvas");
+    thumb.width = Math.max(1, Math.round(canvas.width * scale));
+    thumb.height = Math.max(1, Math.round(canvas.height * scale));
+    const ctx = thumb.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(canvas, 0, 0, thumb.width, thumb.height);
+    return thumb.toDataURL("image/jpeg", 0.72);
+  } catch {
+    // Tainted canvas or an out-of-memory device: a missing poster is fine.
+    return null;
+  }
+}
 
 function bitrateFor(quality: QualityKey): number {
   return quality === "1080" ? 8_000_000 : 4_500_000;
@@ -248,6 +272,8 @@ export function useRecorder({ configRef, onTake, onError }: UseRecorderArgs) {
     };
 
     recorder.onstop = () => {
+      // Grab the poster before teardown clears the draw loop.
+      const poster = canvasRef.current ? capturePoster(canvasRef.current) : null;
       const mimeType = recorder.mimeType || format.mimeType || "video/webm";
       const blob = new Blob(chunksRef.current, {
         type: mimeType.split(";")[0] || "video/webm",
@@ -275,6 +301,7 @@ export function useRecorder({ configRef, onTake, onError }: UseRecorderArgs) {
         createdAt: Date.now(),
         width,
         height,
+        poster,
       });
     };
 
