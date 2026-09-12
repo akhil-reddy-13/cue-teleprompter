@@ -3,7 +3,7 @@
 import { formatBytes, formatClock, timestampSlug } from "@/lib/format";
 import type { Take } from "@/lib/types";
 import { DownloadIcon, TrashIcon } from "@/components/icons";
-import { PanelHeader, Pill } from "@/components/ui";
+import { Button, Note, PanelHeader, Pill } from "@/components/ui";
 
 type Props = {
   takes: Take[];
@@ -39,10 +39,10 @@ export default function TakesPanel({
           </p>
         ) : (
           <>
-            <p className="text-[11px] leading-relaxed text-amber-300/90">
+            <Note tone="warn">
               Takes live in this tab only — download the ones you want before
               you close or reload the page.
-            </p>
+            </Note>
             {takes.map((take, index) => (
               <div
                 key={take.id}
@@ -69,15 +69,14 @@ export default function TakesPanel({
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1.5">
-                    <button
-                      type="button"
+                    <Button
+                      variant="primary"
                       onClick={() => download(take)}
-                      aria-label={`Download take ${takes.length - index}`}
-                      className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 text-xs font-semibold text-ink-950 transition hover:bg-ink-100"
+                      ariaLabel={`Download take ${takes.length - index}`}
                     >
                       <DownloadIcon className="h-4 w-4" />
                       Save
-                    </button>
+                    </Button>
                     <button
                       type="button"
                       onClick={() => onDelete(take.id)}

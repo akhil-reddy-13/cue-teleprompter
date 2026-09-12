@@ -3,7 +3,9 @@
 import { ASPECTS, type AspectKey, type PrompterSettings, type QualityKey, type SourceMode, type StudioSettings } from "@/lib/types";
 import type { DeviceInfo } from "@/lib/useMediaSources";
 import {
+  Button,
   Field,
+  Note,
   PanelHeader,
   Pill,
   SectionTitle,
@@ -123,19 +125,15 @@ export default function SettingsPanel({
             options={sourceOptions}
           />
           {!screenSupported && (
-            <p className="text-[11px] text-amber-300">
+            <Note tone="warn">
               Screen recording isn&apos;t supported on this device — phones
               don&apos;t expose it to the browser.
-            </p>
+            </Note>
           )}
           {screenSupported && studio.sourceMode !== "camera" && (
-            <button
-              type="button"
-              onClick={onToggleScreen}
-              className="w-full rounded-lg bg-ink-800 px-3 py-2 text-xs font-medium text-ink-200 transition hover:bg-ink-700 hover:text-white"
-            >
+            <Button full onClick={onToggleScreen}>
               {screenActive ? "Pick a different screen" : "Choose what to share"}
-            </button>
+            </Button>
           )}
 
           {cameras.length > 1 && (
@@ -304,10 +302,10 @@ export default function SettingsPanel({
         </section>
 
         {recordingActive && (
-          <p className="text-[11px] text-amber-300">
+          <Note tone="warn">
             Changing the frame mid-take can shift what gets recorded. Safer to
             stop first.
-          </p>
+          </Note>
         )}
       </div>
     </div>
