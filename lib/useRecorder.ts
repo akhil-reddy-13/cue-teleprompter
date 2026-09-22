@@ -70,21 +70,27 @@ function bitrateFor(quality: QualityKey): number {
 function buildAudioTrack(
   cameraStream: MediaStream | null,
   screenStream: MediaStream | null,
-): { track: MediaStreamTrack | null; context: AudioContext | null } {
+): {
+  track: MediaStreamTrack | null;
+  context: AudioContext | null;
+  /** False when `track` is a live source track we merely borrowed. */
+  owned: boolean;
+} {
   const micTracks = cameraStream?.getAudioTracks() ?? [];
   const screenTracks = screenStream?.getAudioTracks() ?? [];
   const live = [...micTracks, ...screenTracks].filter(
     (t) => t.readyState === "live",
   );
 
-  if (live.length === 0) return { track: null, context: null };
-  if (live.length === 1) return { track: live[0], context: null };
+  if (live.length === 0) return { track: null, context: null, owned: false };
+  if (live.length === 1)
+    return { track: live[0], context: null, owned: false };
 
   const Ctor =
     window.AudioContext ??
     (window as unknown as { webkitAudioContext?: typeof AudioContext })
       .webkitAudioContext;
-  if (!Ctor) return { track: live[0], context: null };
+  if (!Ctor) return { track: live[0], context: null, owned: false };
 
   const context = new Ctor();
   const destination = context.createMediaStreamDestination();
@@ -96,7 +102,11 @@ function buildAudioTrack(
     source.connect(gain).connect(destination);
   }
   void context.resume().catch(() => {});
-  return { track: destination.stream.getAudioTracks()[0] ?? null, context };
+  return {
+    track: destination.stream.getAudioTracks()[0] ?? null,
+    context,
+    owned: true,
+  };
 }
 
 export function useRecorder({ configRef, onTake, onError }: UseRecorderArgs) {
@@ -109,6 +119,12 @@ export function useRecorder({ configRef, onTake, onError }: UseRecorderArgs) {
   const chunksRef = useRef<Blob[]>([]);
   const rafRef = useRef<number | null>(null);
   const captureStreamRef = useRef<MediaStream | null>(null);
+  /**
+   * Tracks this hook created and may therefore stop. A borrowed mic track is
+   * deliberately absent: stopping it would end the live camera stream's audio
+   * for good, leaving every later take silent.
+   */
+  const ownedTracksRef = useRef<MediaStreamTrack[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const startedAtRef = useRef(0);
   const pausedTotalRef = useRef(0);
@@ -131,7 +147,8 @@ export function useRecorder({ configRef, onTake, onError }: UseRecorderArgs) {
 
   const teardown = useCallback(() => {
     stopDrawLoop();
-    captureStreamRef.current?.getTracks().forEach((t) => t.stop());
+    ownedTracksRef.current.forEach((t) => t.stop());
+    ownedTracksRef.current = [];
     captureStreamRef.current = null;
     if (audioContextRef.current) {
       void audioContextRef.current.close().catch(() => {});
@@ -229,12 +246,20 @@ export function useRecorder({ configRef, onTake, onError }: UseRecorderArgs) {
     runDrawLoop();
 
     const captureStream = canvas.captureStream(FPS);
-    const { track: audioTrack, context } = buildAudioTrack(
+    ownedTracksRef.current = captureStream.getTracks();
+    const {
+      track: audioTrack,
+      context,
+      owned: audioOwned,
+    } = buildAudioTrack(
       config.sourceMode === "screen" ? null : config.cameraStream,
       config.screenStream,
     );
     audioContextRef.current = context;
-    if (audioTrack) captureStream.addTrack(audioTrack);
+    if (audioTrack) {
+      captureStream.addTrack(audioTrack);
+      if (audioOwned) ownedTracksRef.current.push(audioTrack);
+    }
     captureStreamRef.current = captureStream;
 
     let recorder: MediaRecorder;

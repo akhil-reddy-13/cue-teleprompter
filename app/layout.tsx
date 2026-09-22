@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -38,7 +39,13 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={inter.variable}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Anonymous page-level counts only: no cookies, no identifiers, and
+            nothing about the script or the recording. The video itself still
+            never leaves the browser. */}
+        <Analytics />
+      </body>
     </html>
   );
 }

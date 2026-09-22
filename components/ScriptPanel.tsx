@@ -9,8 +9,10 @@ import {
   Button,
   Note,
   PanelHeader,
+  Pill,
   SectionTitle,
   SliderRow,
+  Toggle,
   cx,
 } from "@/components/ui";
 
@@ -35,6 +37,7 @@ type Props = {
   heardWpm: number | null;
   voiceListening: boolean;
   lastHeard: string;
+  voiceSupported: boolean;
   embedded?: boolean;
 };
 
@@ -45,6 +48,7 @@ export default function ScriptPanel({
   heardWpm,
   voiceListening,
   lastHeard,
+  voiceSupported,
   embedded = false,
 }: Props) {
   const [pasteError, setPasteError] = useState<string | null>(null);
@@ -164,6 +168,28 @@ export default function ScriptPanel({
               </button>
             ))}
           </div>
+
+          <div className="border-t border-ink-850 pt-3">
+            <Toggle
+              label="Follow my voice"
+              checked={prompter.voiceSync}
+              disabled={!voiceSupported}
+              onChange={(voiceSync) => onPatch({ voiceSync })}
+              aside={<Pill tone="accent">Beta</Pill>}
+              hint={
+                voiceSupported
+                  ? "Transcribes what you say and matches it against the next few lines, then speeds up or slows down to keep your place on the reading line."
+                  : "Needs a browser with speech recognition — Chrome, Edge or Safari."
+              }
+            />
+          </div>
+
+          {voiceSupported && prompter.voiceSync && (
+            <Note>
+              Chrome sends recognition audio to Google to transcribe it. Your
+              recording still never leaves the device.
+            </Note>
+          )}
 
           {voiceListening && lastHeard && (
             <p className="truncate text-[11px] text-ink-500">

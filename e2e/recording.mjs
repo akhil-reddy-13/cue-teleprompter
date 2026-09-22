@@ -143,6 +143,42 @@ export default async function run() {
       portrait,
     );
 
+    // A second take used to come out silent: the recorder stopped every track
+    // in its capture stream on teardown, and when the mic was the only audio
+    // source that stream held the *live* mic track itself.
+    const micLive = await page.evaluate(() => {
+      const video = document.querySelectorAll("video")[1];
+      const tracks = video?.srcObject?.getAudioTracks?.() ?? [];
+      return tracks.length > 0 && tracks.every((t) => t.readyState === "live");
+    });
+    check("mic survives a finished take", micLive);
+
+    await page.getByRole("button", { name: /^Play take/ }).first().click();
+    await page.waitForTimeout(700);
+    const audio = await page.evaluate(async () => {
+      const video = [...document.querySelectorAll("video")].find(
+        (v) => v.controls,
+      );
+      if (!video) return { peak: 0 };
+      const buffer = await (await fetch(video.src)).arrayBuffer();
+      try {
+        const decoded = await new AudioContext().decodeAudioData(buffer);
+        const channel = decoded.getChannelData(0);
+        let peak = 0;
+        for (let i = 0; i < channel.length; i++) {
+          peak = Math.max(peak, Math.abs(channel[i]));
+        }
+        return { peak };
+      } catch {
+        return { peak: 0 };
+      }
+    });
+    check(
+      "the second take carries audible audio",
+      audio.peak > 0.001,
+      `peak ${audio.peak.toFixed(3)}`,
+    );
+
     check(
       "no console errors",
       page.collectedErrors.length === 0,

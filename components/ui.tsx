@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type {
   CSSProperties,
   PointerEvent as ReactPointerEvent,
@@ -185,12 +185,15 @@ export function Toggle({
   onChange,
   hint,
   disabled,
+  aside,
 }: {
   label: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   hint?: ReactNode;
   disabled?: boolean;
+  /** Sits beside the label — a status or maturity marker, not a control. */
+  aside?: ReactNode;
 }) {
   return (
     <div
@@ -200,7 +203,10 @@ export function Toggle({
       )}
     >
       <div className="min-w-0">
-        <div className="text-[13px] font-medium text-ink-200">{label}</div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[13px] font-medium text-ink-200">{label}</span>
+          {aside}
+        </div>
         {hint ? (
           <div className="mt-0.5 text-[11px] leading-snug text-ink-500">
             {hint}
@@ -499,6 +505,54 @@ export function Sheet({
           <PanelHeader title={title} onClose={onClose} />
         </div>
         {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A centred modal, as opposed to `Sheet` which is the phone-only bottom
+ * drawer. Used for content you read rather than settings you adjust, so it
+ * gets the same treatment at every width.
+ */
+export function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center sm:items-center">
+      <button
+        type="button"
+        aria-label={`Close ${title}`}
+        onClick={onClose}
+        className="fade-in absolute inset-0 bg-black/70 backdrop-blur-sm"
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        className="sheet-in relative flex max-h-[88dvh] w-full max-w-lg flex-col rounded-t-[20px] bg-ink-950 shadow-stage ring-1 ring-inset ring-ink-800 sm:rounded-[20px] [padding-bottom:env(safe-area-inset-bottom)] sm:pb-0"
+      >
+        <PanelHeader title={title} onClose={onClose} />
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-5">
+          {children}
+        </div>
       </div>
     </div>
   );

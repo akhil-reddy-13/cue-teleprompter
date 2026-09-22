@@ -65,6 +65,14 @@ export default function Teleprompter({
   const lastFrameRef = useRef(0);
 
   const [fontScale, setFontScale] = useState(1);
+  /**
+   * Drives the scroll padding in *pixels*. A CSS `%` padding resolves against
+   * the container's width, but every offset here is reasoned about in terms of
+   * the viewport's height — so a percentage left the run-out at the end of the
+   * script mismatched with the height the maths assumed, and the last lines
+   * scrolled up off the panel before "end of script" fired.
+   */
+  const [viewportPx, setViewportPx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [wordsLeft, setWordsLeft] = useState(0);
 
@@ -110,19 +118,35 @@ export default function Teleprompter({
    */
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
+    const content = contentRef.current;
     if (!viewport) return;
     const observer = new ResizeObserver(() => {
       const height = viewport.clientHeight;
-      if (height > 0) setFontScale(clamp(height / 300, 0.55, 1.6));
+      if (height > 0) {
+        setFontScale(clamp(height / 300, 0.55, 1.6));
+        setViewportPx(height);
+      }
       measure();
     });
     observer.observe(viewport);
+    // Watch the text too, not just the frame around it. The viewport keeps its
+    // size through a reflow, so watching it alone missed the web font swapping
+    // in — the cached scroll height stayed at the fallback font's measurement
+    // and the run ended a few lines early.
+    if (content) observer.observe(content);
     return () => observer.disconnect();
   }, [measure]);
 
   useLayoutEffect(() => {
     measure();
-  }, [measure, fontPx, settings.lineHeight, settings.bold, settings.heightPct]);
+  }, [
+    measure,
+    fontPx,
+    settings.lineHeight,
+    settings.bold,
+    settings.heightPct,
+    viewportPx,
+  ]);
 
   const applyOffset = useCallback((next: number) => {
     const max = textHeightRef.current;
@@ -439,8 +463,10 @@ export default function Teleprompter({
               // ~44 characters per line. Long lines mean long eye travel away
               // from the lens, which defeats the point of a prompter.
               maxWidth: "22em",
-              paddingTop: `${FOCUS_RATIO * 100}%`,
-              paddingBottom: `${(1 - FOCUS_RATIO) * 100}%`,
+              // Lead-in puts the first word on the reading line; run-out lets
+              // the last word arrive there exactly as the scroll hits its end.
+              paddingTop: `${viewportPx * FOCUS_RATIO}px`,
+              paddingBottom: `${viewportPx * (1 - FOCUS_RATIO)}px`,
               fontSize: `${fontPx}px`,
               lineHeight: settings.lineHeight,
               fontWeight: settings.bold ? 650 : 450,

@@ -5,7 +5,6 @@ import { formatBytes, formatClock } from "@/lib/format";
 import type { RecorderStatus } from "@/lib/useRecorder";
 import {
   FilmIcon,
-  LightIcon,
   MicIcon,
   PauseIcon,
   PlayIcon,
@@ -14,7 +13,7 @@ import {
   SlidersIcon,
   SwitchCameraIcon,
 } from "@/components/icons";
-import { Kbd, cx } from "@/components/ui";
+import { cx } from "@/components/ui";
 
 export type PanelKey = "script" | "setup" | "takes";
 
@@ -23,15 +22,12 @@ function IconButton({
   onClick,
   active,
   disabled,
-  badge,
   children,
 }: {
   label: string;
   onClick: () => void;
   active?: boolean;
   disabled?: boolean;
-  /** Small value shown under the glyph, e.g. the fill-light level. */
-  badge?: string;
   children: ReactNode;
 }) {
   return (
@@ -52,16 +48,6 @@ function IconButton({
       )}
     >
       {children}
-      {badge && !disabled ? (
-        <span
-          className={cx(
-            "absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full px-1 text-[9px] font-bold leading-[11px] tabular-nums",
-            active ? "bg-ink-950 text-ink-100" : "bg-ink-700 text-ink-200",
-          )}
-        >
-          {badge}
-        </span>
-      ) : null}
     </button>
   );
 }
@@ -83,14 +69,10 @@ type Props = {
   onMicToggle: () => void;
   canFlip: boolean;
   onFlip: () => void;
-  fillLight: number;
-  onLightCycle: () => void;
   takesCount: number;
   activePanel: PanelKey | null;
   onPanel: (panel: PanelKey) => void;
   recordDisabled: boolean;
-  formatLabel: string;
-  resolutionLabel: string;
 };
 
 export default function ControlBar({
@@ -110,14 +92,10 @@ export default function ControlBar({
   onMicToggle,
   canFlip,
   onFlip,
-  fillLight,
-  onLightCycle,
   takesCount,
   activePanel,
   onPanel,
   recordDisabled,
-  formatLabel,
-  resolutionLabel,
 }: Props) {
   const counting = countdownLeft !== null;
   const blocked = recordDisabled && !isActive && !counting;
@@ -159,13 +137,7 @@ export default function ControlBar({
             : formatBytes(recordedBytes)}
       </span>
     </span>
-  ) : hasScript ? (
-    <span className="hidden items-center gap-1.5 text-ink-600 sm:inline-flex">
-      <Kbd>R</Kbd> record
-      <span className="text-ink-700">·</span>
-      <Kbd>space</Kbd> scroll
-    </span>
-  ) : (
+  ) : hasScript ? null : (
     <span className="text-ink-600">Add a script to start the prompter</span>
   );
 
@@ -189,18 +161,6 @@ export default function ControlBar({
               <SwitchCameraIcon className="h-[19px] w-[19px]" />
             </IconButton>
           )}
-          <IconButton
-            label={
-              fillLight > 0
-                ? `Fill light at ${fillLight}% — tap to change`
-                : "Turn on fill light"
-            }
-            onClick={onLightCycle}
-            active={fillLight > 0}
-            badge={fillLight > 0 ? `${fillLight}` : undefined}
-          >
-            <LightIcon className="h-[19px] w-[19px]" />
-          </IconButton>
         </div>
 
         <div className="flex items-center gap-3">
@@ -301,13 +261,7 @@ export default function ControlBar({
           )}
         </div>
 
-        <div className="flex flex-1 items-center justify-end">
-          <div className="hidden items-center gap-1.5 rounded-lg bg-ink-900/80 px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-ink-500 ring-1 ring-inset ring-ink-850 sm:flex">
-            <span className="tabular-nums">{resolutionLabel}</span>
-            <span className="text-ink-700">·</span>
-            <span>{formatLabel}</span>
-          </div>
-        </div>
+        <div aria-hidden className="flex-1" />
       </div>
 
       <div className="mx-auto mt-2 flex w-full max-w-3xl gap-1.5 lg:hidden">

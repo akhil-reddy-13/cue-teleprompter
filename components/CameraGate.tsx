@@ -57,7 +57,7 @@ export default function CameraGate({
         </h2>
         <p className="text-xs leading-relaxed text-ink-400">
           {message ??
-            "Your video never leaves this device — there's no server for it to go to."}
+            "Your video never leaves this device — it is never uploaded anywhere."}
         </p>
       </div>
 
