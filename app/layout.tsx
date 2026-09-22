@@ -13,11 +13,11 @@ const description =
   "A free teleprompter and video recorder that runs entirely in your browser. Paste a script, pick your aspect ratio, hit record. No watermark, no trial, no upload.";
 
 export const metadata: Metadata = {
-  title: "Cue — free teleprompter video recorder",
+  title: "Pace — free teleprompter video recorder",
   description,
-  applicationName: "Cue",
+  applicationName: "Pace",
   openGraph: {
-    title: "Cue — free teleprompter video recorder",
+    title: "Pace — free teleprompter video recorder",
     description,
     type: "website",
   },

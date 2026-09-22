@@ -1,4 +1,6 @@
-# Cue
+# Pace
+
+**[paceprompter.vercel.app](https://paceprompter.vercel.app)**
 
 A teleprompter and video recorder that runs entirely in the browser. Paste a
 script, pick an aspect ratio, hit record. The script scrolls just under the
