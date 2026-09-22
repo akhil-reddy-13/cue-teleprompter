@@ -255,10 +255,28 @@ export default function Studio() {
     if (camera.status === "live") void startCamera();
   }, [camera.status, sourceKey, startCamera]);
 
-  // Aspect changes retune the live track rather than restarting it.
+  // Aspect changes retune the live track rather than restarting it — but some
+  // cameras won't change orientation on a live track, and a portrait track
+  // cropped into a landscape frame looks wildly zoomed rather than merely
+  // mis-framed. So verify, and rebuild the stream only when retuning failed.
+  // `useCamera` hands back a fresh object every render, so this effect's deps
+  // change constantly. Keyed on the aspect we last handled, it acts once per
+  // actual change — without that guard the restart below could re-enter on
+  // every render and loop the camera forever.
+  const retunedAspectRef = useRef<typeof studio.aspect | null>(null);
   useEffect(() => {
-    if (camera.status === "live") void camera.retuneAspect(studio.aspect);
-  }, [camera, studio.aspect]);
+    if (camera.status !== "live") return;
+    if (retunedAspectRef.current === studio.aspect) return;
+    retunedAspectRef.current = studio.aspect;
+    let cancelled = false;
+    void (async () => {
+      const ok = await camera.retuneAspect(studio.aspect);
+      if (!ok && !cancelled) await startCamera();
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [camera, startCamera, studio.aspect]);
 
   useEffect(() => {
     camera.setMicEnabled(studio.micEnabled);
