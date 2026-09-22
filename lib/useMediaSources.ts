@@ -34,6 +34,41 @@ function describeError(error: unknown): string {
   }
 }
 
+/**
+ * Resolution hints that actually agree with the ratio being asked for.
+ *
+ * These used to be a hardcoded 1920x1080 / 1080x1920 pair, which contradicts
+ * every ratio that isn't 16:9 or 9:16 — asking for 4:3 alongside a 1920x1080
+ * size lets the browser satisfy the size and quietly drop the aspect, so a
+ * 4:3 frame ends up cropping a 16:9 source.
+ */
+function idealSizeFor(aspect: AspectKey): MediaTrackConstraints {
+  const ratio = aspectRatioOf(aspect);
+  const shortEdge = 1080;
+  return {
+    width: { ideal: ratio >= 1 ? Math.round(shortEdge * ratio) : shortEdge },
+    height: { ideal: ratio >= 1 ? shortEdge : Math.round(shortEdge / ratio) },
+    aspectRatio: { ideal: ratio },
+  };
+}
+
+/**
+ * Whether a track is at least the right way up for the target frame.
+ *
+ * The compositor crops to fill, so a portrait track in a landscape frame is
+ * not a harmless mismatch: it keeps a thin horizontal band from the middle of
+ * the picture and discards the rest, which reads as an extreme zoom.
+ */
+function orientationMatches(
+  track: MediaStreamTrack,
+  aspect: AspectKey,
+): boolean {
+  const { width, height } = track.getSettings();
+  if (!width || !height) return true; // Nothing to judge on; leave it be.
+  const side = (r: number) => (r > 1.05 ? 1 : r < 0.95 ? -1 : 0);
+  return side(aspectRatioOf(aspect)) === side(width / height);
+}
+
 export function useCamera() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<CameraStatus>("off");
@@ -87,12 +122,8 @@ export function useCamera() {
       setStatus("starting");
       setError(null);
 
-      const ratio = aspectRatioOf(request.aspect);
-      const portrait = ratio <= 1;
       const video: MediaTrackConstraints = {
-        width: { ideal: portrait ? 1080 : 1920 },
-        height: { ideal: portrait ? 1920 : 1080 },
-        aspectRatio: { ideal: ratio },
+        ...idealSizeFor(request.aspect),
         frameRate: { ideal: 30, max: 60 },
         ...(request.videoDeviceId
           ? { deviceId: { exact: request.videoDeviceId } }
@@ -179,18 +210,16 @@ export function useCamera() {
    */
   const retuneAspect = useCallback(async (aspect: AspectKey) => {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return;
-    const ratio = aspectRatioOf(aspect);
-    const portrait = ratio <= 1;
+    if (!track) return true;
     try {
-      await track.applyConstraints({
-        width: { ideal: portrait ? 1080 : 1920 },
-        height: { ideal: portrait ? 1920 : 1080 },
-        aspectRatio: { ideal: ratio },
-      });
+      await track.applyConstraints(idealSizeFor(aspect));
     } catch {
-      // Fine — the compositor crops to the target ratio regardless.
+      // Some cameras refuse to retune a live track at all.
     }
+    // Retuning is best-effort, so check the result rather than assume it. A
+    // camera that won't turn landscape needs its stream rebuilt, which the
+    // caller does; permission is already granted, so there is no new prompt.
+    return orientationMatches(track, aspect);
   }, []);
 
   const setMicEnabled = useCallback((enabled: boolean) => {
