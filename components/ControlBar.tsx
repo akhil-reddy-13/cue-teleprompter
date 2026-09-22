@@ -142,12 +142,19 @@ export default function ControlBar({
   );
 
   return (
-    <div className="relative z-30 shrink-0 border-t border-ink-850 bg-ink-950/85 px-3 pt-2 backdrop-blur-xl [padding-bottom:max(env(safe-area-inset-bottom),0.6rem)]">
-      <div className="mx-auto flex h-4 w-full max-w-3xl items-center justify-center text-[11px] leading-none">
-        {statusLine}
-      </div>
+    <div className="relative z-30 shrink-0 border-t border-ink-850 bg-ink-950/85 px-3 pt-1.5 backdrop-blur-xl [padding-bottom:max(env(safe-area-inset-bottom),0.4rem)] sm:pt-2">
+      {statusLine && (
+        <div className="mx-auto flex h-4 w-full max-w-3xl items-center justify-center text-[11px] leading-none">
+          {statusLine}
+        </div>
+      )}
 
-      <div className="mx-auto mt-1.5 flex w-full max-w-3xl items-center gap-2">
+      <div
+        className={cx(
+          "mx-auto flex w-full max-w-3xl items-center gap-2",
+          statusLine && "mt-1.5",
+        )}
+      >
         <div className="flex flex-1 items-center gap-1.5">
           <IconButton
             label={micEnabled ? "Mute microphone" : "Unmute microphone"}
@@ -189,7 +196,7 @@ export default function ControlBar({
                   : "Start recording"
             }
             className={cx(
-              "group relative flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-full transition-transform duration-150",
+              "group relative flex h-[60px] w-[60px] shrink-0 items-center justify-center rounded-full transition-transform duration-150 sm:h-[68px] sm:w-[68px]",
               blocked ? "cursor-not-allowed" : "active:scale-[0.94]",
             )}
           >
@@ -230,7 +237,7 @@ export default function ControlBar({
             ) : (
               <span
                 className={cx(
-                  "h-[52px] w-[52px] rounded-full transition-colors",
+                  "h-[44px] w-[44px] rounded-full transition-colors sm:h-[52px] sm:w-[52px]",
                   blocked ? "bg-ink-700" : "bg-accent group-hover:brightness-110",
                 )}
               />
@@ -264,7 +271,7 @@ export default function ControlBar({
         <div aria-hidden className="flex-1" />
       </div>
 
-      <div className="mx-auto mt-2 flex w-full max-w-3xl gap-1.5 lg:hidden">
+      <div className="mx-auto mt-1.5 flex w-full max-w-3xl gap-1.5 lg:hidden">
         {tabs.map((tab) => (
           <button
             key={tab.key}
@@ -272,7 +279,7 @@ export default function ControlBar({
             onClick={() => onPanel(tab.key)}
             aria-pressed={activePanel === tab.key}
             className={cx(
-              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition duration-150",
+              "flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-medium transition duration-150",
               activePanel === tab.key
                 ? "bg-ink-100 text-ink-950"
                 : "bg-ink-900/80 text-ink-400 ring-1 ring-inset ring-ink-850 hover:text-ink-200",
