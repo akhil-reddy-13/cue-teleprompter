@@ -4,8 +4,22 @@ A teleprompter and video recorder that runs entirely in the browser. Paste a
 script, pick an aspect ratio, hit record. The script scrolls just under the
 lens while you talk, so you look straight down the barrel.
 
-No account, no trial, no watermark, and no upload — there is no backend, and
-the video never leaves the device.
+No account, no trial, no watermark, and no upload — there is no backend for
+recordings, and the video never leaves the device.
+
+## Privacy
+
+The video, the audio and the script stay in the browser. There is no server to
+upload them to and no code path that tries.
+
+The deployed site does load [Vercel Web Analytics](https://vercel.com/docs/analytics),
+which counts page views and visitors. It sets no cookies, stores no identifiers,
+and never sees the script or the recording. Drop `<Analytics />` from
+`app/layout.tsx` to remove it entirely; nothing else depends on it.
+
+"Follow my voice" is the one feature that sends anything else: in Chrome the
+Web Speech API streams recognition audio to Google while it is switched on. It
+is off by default, and the recording is unaffected either way.
 
 ## Run it
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
 import CameraGate from "@/components/CameraGate";
+import AboutDialog from "@/components/AboutDialog";
 import ControlBar, { type PanelKey } from "@/components/ControlBar";
 import FillLight from "@/components/FillLight";
 import ScriptPanel from "@/components/ScriptPanel";
@@ -10,7 +11,7 @@ import SettingsPanel from "@/components/SettingsPanel";
 import TakesPanel from "@/components/TakesPanel";
 import Teleprompter from "@/components/Teleprompter";
 import { clamp, formatClock } from "@/lib/format";
-import { outputSize, pipRect } from "@/lib/layout";
+import { pipRect } from "@/lib/layout";
 import { parseScript } from "@/lib/script";
 import {
   DEFAULT_PROMPTER,
@@ -32,6 +33,7 @@ import { useVoiceSync } from "@/lib/useVoiceSync";
 import {
   CloseIcon,
   FilmIcon,
+  QuestionIcon,
   ScriptIcon,
   SlidersIcon,
   SparkIcon,
@@ -40,8 +42,6 @@ import { Note, Pill, Sheet, cx } from "@/components/ui";
 
 const STUDIO_KEY = "cue.studio.v2";
 const PROMPTER_KEY = "cue.prompter.v2";
-
-const LIGHT_STEPS = [0, 40, 75, 100];
 
 function attachStream(
   el: HTMLVideoElement | null,
@@ -79,6 +79,7 @@ export default function Studio() {
   const [takes, setTakes] = useState<Take[]>([]);
   const [activePanel, setActivePanel] = useState<PanelKey | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [countdownLeft, setCountdownLeft] = useState<number | null>(null);
   const [prompterRunning, setPrompterRunning] = useState(false);
   const [resetToken, setResetToken] = useState(0);
@@ -459,14 +460,6 @@ export default function Studio() {
     patchStudio({ videoDeviceId: next.deviceId });
   }, [camera.cameras, isTouchPortrait, patchStudio, studio.videoDeviceId]);
 
-  const cycleLight = useCallback(() => {
-    patchStudio((prev) => {
-      const index = LIGHT_STEPS.findIndex((step) => step >= prev.fillLight);
-      const nextIndex = (index < 0 ? 0 : index + 1) % LIGHT_STEPS.length;
-      return { fillLight: LIGHT_STEPS[nextIndex] };
-    });
-  }, [patchStudio]);
-
   const deleteTake = useCallback((id: string) => {
     setTakes((prev) => {
       const target = prev.find((take) => take.id === id);
@@ -511,6 +504,11 @@ export default function Studio() {
           togglePrompter();
           break;
         case "Escape":
+          // Topmost surface first: the About dialog sits above the panels.
+          if (aboutOpen) {
+            setAboutOpen(false);
+            break;
+          }
           setActivePanel(null);
           if (countdownLeft !== null) setCountdownLeft(null);
           break;
@@ -528,7 +526,13 @@ export default function Studio() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [countdownLeft, handleRecordToggle, patchPrompter, togglePrompter]);
+  }, [
+    aboutOpen,
+    countdownLeft,
+    handleRecordToggle,
+    patchPrompter,
+    togglePrompter,
+  ]);
 
   // -------------------------------------------------------------------- render
 
@@ -582,12 +586,6 @@ export default function Studio() {
 
   const panelKey: PanelKey = activePanel ?? "script";
 
-  // "1080p" means the short edge, so a 9:16 take is 1080p and not 1920p.
-  const resolutionLabel = (() => {
-    const { width, height } = outputSize(studio.aspect, studio.quality);
-    return `${Math.min(width, height)}p`;
-  })();
-
   // A vertical frame inside a landscape phone viewport leaves a sliver of
   // preview; say so rather than letting it look broken.
   const showRotateHint =
@@ -608,6 +606,7 @@ export default function Studio() {
           heardWpm={voice.heardWpm}
           voiceListening={voice.listening}
           lastHeard={voice.lastHeard}
+          voiceSupported={voice.supported}
         />
       );
     }
@@ -625,7 +624,6 @@ export default function Studio() {
           screenSupported={screen.supported}
           screenActive={!!screen.stream}
           onToggleScreen={() => void toggleScreenShare()}
-          voiceSupported={voice.supported}
           recordingActive={recorder.isActive}
           formatLabel={formatLabel}
           rearCameraActive={usingRearCamera}
@@ -669,18 +667,25 @@ export default function Studio() {
               Cue
             </h1>
             <p className="hidden truncate text-[11px] text-ink-500 md:block">
-              Teleprompter + recorder. No watermark, no trial, nothing leaves
-              your device.
+              Teleprompter + recorder. No watermark, no trial, no upload.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setAboutOpen(true)}
+              aria-label="About Cue"
+              title="About Cue"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-ink-500 transition hover:bg-ink-850 hover:text-ink-200"
+            >
+              <QuestionIcon className="h-[17px] w-[17px]" />
+            </button>
             {prompter.voiceSync && (
               <Pill tone={voice.listening ? "accent" : "neutral"}>
                 <SparkIcon className="h-3 w-3" />
                 {voice.listening ? "Following" : "Voice sync"}
               </Pill>
             )}
-            <Pill>{effectiveWpm} wpm</Pill>
           </div>
         </header>
 
@@ -855,16 +860,12 @@ export default function Studio() {
           }
           canFlip={isTouchPortrait === true || camera.cameras.length > 1}
           onFlip={handleFlip}
-          fillLight={studio.fillLight}
-          onLightCycle={cycleLight}
           takesCount={takes.length}
           activePanel={activePanel}
           onPanel={(panel) =>
             setActivePanel((current) => (current === panel ? null : panel))
           }
           recordDisabled={recordDisabled}
-          formatLabel={recorder.format?.ext.toUpperCase() ?? "—"}
-          resolutionLabel={resolutionLabel}
         />
       </main>
 
@@ -914,6 +915,8 @@ export default function Studio() {
           {panelContent(true)}
         </Sheet>
       )}
+
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
     </div>
   );
 }

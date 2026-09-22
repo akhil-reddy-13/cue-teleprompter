@@ -14,7 +14,6 @@ import {
   Field,
   Note,
   PanelHeader,
-  Pill,
   SectionTitle,
   Segmented,
   Select,
@@ -60,7 +59,6 @@ type Props = {
   screenSupported: boolean;
   screenActive: boolean;
   onToggleScreen: () => void;
-  voiceSupported: boolean;
   recordingActive: boolean;
   formatLabel: string;
   rearCameraActive: boolean;
@@ -78,7 +76,6 @@ export default function SettingsPanel({
   screenSupported,
   screenActive,
   onToggleScreen,
-  voiceSupported,
   recordingActive,
   formatLabel,
   rearCameraActive,
@@ -316,31 +313,6 @@ export default function SettingsPanel({
               hint="For beam-splitter teleprompter rigs."
             />
           </Rows>
-        </Section>
-
-        <Section
-          title="Follow my voice"
-          aside={<Pill tone="accent">Beta</Pill>}
-        >
-          <Rows>
-            <Toggle
-              label="Match the scroll to my speaking pace"
-              checked={prompter.voiceSync}
-              disabled={!voiceSupported}
-              onChange={(voiceSync) => onPromptPatch({ voiceSync })}
-              hint={
-                voiceSupported
-                  ? "Listens, finds your place in the script, and speeds up or slows down to stay with you."
-                  : "Needs a browser with speech recognition — Chrome, Edge or Safari."
-              }
-            />
-          </Rows>
-          {voiceSupported && prompter.voiceSync && (
-            <Note>
-              Chrome sends recognition audio to Google. Your recording still
-              never leaves the device.
-            </Note>
-          )}
         </Section>
 
         <Section title="Fill light">

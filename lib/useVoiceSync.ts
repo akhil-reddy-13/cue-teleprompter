@@ -53,7 +53,12 @@ export function useVoiceSync({
   getCurrentWord,
   onUnavailable,
 }: UseVoiceSyncArgs) {
-  const [supported] = useState(() => getRecognitionCtor() !== null);
+  // Probed after mount, not during render: the server has no `window`, so a
+  // render-time probe renders "unsupported" on the server and "supported" on
+  // the client, which is a hydration mismatch. Same reason the recorder probes
+  // its output format in an effect.
+  const [supported, setSupported] = useState(false);
+  useEffect(() => setSupported(getRecognitionCtor() !== null), []);
   const [listening, setListening] = useState(false);
   const [heardWpm, setHeardWpm] = useState<number | null>(null);
   const [lastHeard, setLastHeard] = useState<string>("");

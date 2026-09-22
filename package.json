@@ -10,7 +10,8 @@
     "test:e2e": "node e2e/run.mjs"
   },
   "dependencies": {
-    "next": "15.5.4",
+    "@vercel/analytics": "^2.0.1",
+    "next": "^15.5.25",
     "react": "19.1.1",
     "react-dom": "19.1.1"
   },

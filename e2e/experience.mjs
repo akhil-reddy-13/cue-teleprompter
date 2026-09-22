@@ -133,34 +133,41 @@ export default async function run() {
       check("a landscape phone with a vertical frame is told to rotate", hint);
     }
 
-    // ---- the resolution chip tells the truth ------------------------------
+    // ---- resolution lives in Setup ----------------------------------------
+    // The control bar used to carry a resolution chip; it duplicated this
+    // control and was dropped. That a 9:16 take is 1080p and not 1920p — the
+    // short-edge reading — is asserted on real output dimensions in the
+    // recording suite, which is the honest place for it.
     {
       const page = await openApp(await grantedContext(browser, DESKTOP));
       await enableCamera(page);
-      const chip = () =>
+      await openPanel(page, "Setup");
+
+      const checkedQuality = () =>
         page.evaluate(() => {
-          const el = [...document.querySelectorAll("span")].find((span) =>
-            /^\d+p$/.test(span.textContent?.trim() ?? ""),
-          );
-          return el?.textContent?.trim() ?? null;
+          const group = document.querySelector('[aria-label="Resolution"]');
+          const on = group?.querySelector('[role="radio"][aria-checked="true"]');
+          return on?.textContent?.trim() ?? null;
         });
 
-      const wide = await chip();
-      await openPanel(page, "Setup");
+      const wide = await checkedQuality();
       await page.getByRole("button", { name: "9:16" }).click();
       await page.waitForTimeout(600);
-      const tall = await chip();
-      // Resolution means the short edge, so a 9:16 take is 1080p, not 1920p.
+      const tall = await checkedQuality();
       check(
-        "resolution reads the short edge in both orientations",
+        "quality holds steady across a change of aspect",
         wide === "1080p" && tall === "1080p",
         `16:9=${wide} 9:16=${tall}`,
       );
 
       await page.getByRole("radio", { name: "720p — smaller file" }).click();
       await page.waitForTimeout(400);
-      const smaller = await chip();
-      check("changing quality updates it", smaller === "720p", `${smaller}`);
+      const smaller = await checkedQuality();
+      check(
+        "changing quality updates it",
+        smaller === "720p — smaller file",
+        `${smaller}`,
+      );
     }
   } finally {
     await browser.close();

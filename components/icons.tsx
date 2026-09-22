@@ -285,3 +285,18 @@ export function SparkIcon({ className = base }: IconProps) {
     </svg>
   );
 }
+
+export function QuestionIcon({ className = base }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className={className} aria-hidden>
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
+      <path
+        d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.36c-.6.22-.9.74-.9 1.34v.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <circle cx="12" cy="16.6" r="0.95" fill="currentColor" />
+    </svg>
+  );
+}
