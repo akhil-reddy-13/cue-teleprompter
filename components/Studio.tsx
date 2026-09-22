@@ -40,6 +40,9 @@ import {
 } from "@/components/icons";
 import { Note, Pill, Sheet, cx } from "@/components/ui";
 
+// Deliberately still "cue.*": these keys predate the rename to Pace, and
+// changing them would silently discard every existing visitor's saved script
+// and settings. The prefix is invisible to users; their work isn't.
 const STUDIO_KEY = "cue.studio.v2";
 const PROMPTER_KEY = "cue.prompter.v2";
 
@@ -682,7 +685,7 @@ export default function Studio() {
               <span className="h-2.5 w-2.5 rounded-full bg-accent" />
             </span>
             <h1 className="text-[15px] font-semibold tracking-tight text-white">
-              Cue
+              Pace
             </h1>
             <p className="hidden truncate text-[11px] text-ink-500 md:block">
               Teleprompter + recorder. No watermark, no trial, no upload.
@@ -692,8 +695,8 @@ export default function Studio() {
             <button
               type="button"
               onClick={() => setAboutOpen(true)}
-              aria-label="About Cue"
-              title="About Cue"
+              aria-label="About Pace"
+              title="About Pace"
               className="flex h-7 w-7 items-center justify-center rounded-full text-ink-500 transition hover:bg-ink-850 hover:text-ink-200"
             >
               <QuestionIcon className="h-[17px] w-[17px]" />

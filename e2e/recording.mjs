@@ -21,7 +21,7 @@ export default async function run() {
   try {
     const page = await openApp(await grantedContext(browser, DESKTOP));
 
-    check("app renders", (await page.locator("h1").innerText()) === "Cue");
+    check("app renders", (await page.locator("h1").innerText()) === "Pace");
 
     await enableCamera(page);
     const camera = await page.evaluate(() => {

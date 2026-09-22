@@ -34,7 +34,7 @@ function Code({ children }: { children: ReactNode }) {
 
 export default function AboutDialog({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="About Cue" onClose={onClose}>
+    <Modal title="About Pace" onClose={onClose}>
       <P>
         Most web teleprompters make you pick between a greasy $15/mo
         subscription, a watermark stamped across your forehead, or an app that
@@ -42,7 +42,7 @@ export default function AboutDialog({ onClose }: { onClose: () => void }) {
       </P>
       <P>
         I kept having to record quick promo videos and got sick of juggling
-        notes on one screen while looking off-camera on the other. Cue is just
+        notes on one screen while looking off-camera on the other. Pace is just
         the clean, free tool that should&apos;ve already existed.
       </P>
       <P>
