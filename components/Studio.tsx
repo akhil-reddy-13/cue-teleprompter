@@ -262,24 +262,14 @@ export default function Studio() {
   // cameras won't change orientation on a live track, and a portrait track
   // cropped into a landscape frame looks wildly zoomed rather than merely
   // mis-framed. So verify, and rebuild the stream only when retuning failed.
-  // `useCamera` hands back a fresh object every render, so this effect's deps
-  // change constantly. Keyed on the aspect we last handled, it acts once per
-  // actual change — without that guard the restart below could re-enter on
-  // every render and loop the camera forever.
-  const retunedAspectRef = useRef<typeof studio.aspect | null>(null);
+  // Retune only. There used to be a fallback here that rebuilt the stream when
+  // the track's reported orientation didn't match the frame, which backfired on
+  // phones: mobile browsers commonly report `getSettings()` in the sensor's own
+  // landscape orientation even while delivering portrait video, so the check
+  // read as a mismatch and restarted a camera that was already correct.
   useEffect(() => {
-    if (camera.status !== "live") return;
-    if (retunedAspectRef.current === studio.aspect) return;
-    retunedAspectRef.current = studio.aspect;
-    let cancelled = false;
-    void (async () => {
-      const ok = await camera.retuneAspect(studio.aspect);
-      if (!ok && !cancelled) await startCamera();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [camera, startCamera, studio.aspect]);
+    if (camera.status === "live") void camera.retuneAspect(studio.aspect);
+  }, [camera, studio.aspect]);
 
   useEffect(() => {
     camera.setMicEnabled(studio.micEnabled);
@@ -721,7 +711,7 @@ export default function Studio() {
 
         <div
           ref={stageRef}
-          className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-2 pb-1.5 sm:px-5"
+          className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-0 pb-1 sm:px-5 sm:pb-1.5"
         >
           {/* Ambient wash so the space around a letterboxed frame reads as
               deliberate rather than empty. */}

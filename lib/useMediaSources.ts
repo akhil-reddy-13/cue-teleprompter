@@ -52,23 +52,6 @@ function idealSizeFor(aspect: AspectKey): MediaTrackConstraints {
   };
 }
 
-/**
- * Whether a track is at least the right way up for the target frame.
- *
- * The compositor crops to fill, so a portrait track in a landscape frame is
- * not a harmless mismatch: it keeps a thin horizontal band from the middle of
- * the picture and discards the rest, which reads as an extreme zoom.
- */
-function orientationMatches(
-  track: MediaStreamTrack,
-  aspect: AspectKey,
-): boolean {
-  const { width, height } = track.getSettings();
-  if (!width || !height) return true; // Nothing to judge on; leave it be.
-  const side = (r: number) => (r > 1.05 ? 1 : r < 0.95 ? -1 : 0);
-  return side(aspectRatioOf(aspect)) === side(width / height);
-}
-
 export function useCamera() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [status, setStatus] = useState<CameraStatus>("off");
@@ -210,16 +193,12 @@ export function useCamera() {
    */
   const retuneAspect = useCallback(async (aspect: AspectKey) => {
     const track = streamRef.current?.getVideoTracks()[0];
-    if (!track) return true;
+    if (!track) return;
     try {
       await track.applyConstraints(idealSizeFor(aspect));
     } catch {
       // Some cameras refuse to retune a live track at all.
     }
-    // Retuning is best-effort, so check the result rather than assume it. A
-    // camera that won't turn landscape needs its stream rebuilt, which the
-    // caller does; permission is already granted, so there is no new prompt.
-    return orientationMatches(track, aspect);
   }, []);
 
   const setMicEnabled = useCallback((enabled: boolean) => {
