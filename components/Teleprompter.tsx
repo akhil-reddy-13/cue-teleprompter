@@ -426,7 +426,7 @@ export default function Teleprompter({
           style={{
             top: `${FOCUS_RATIO * 100}%`,
             background:
-              "radial-gradient(58% 100% at 24% 50%, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 100%)",
+              "radial-gradient(46% 100% at 50% 50%, rgba(255,255,255,0.07) 0%, rgba(255,255,255,0) 100%)",
           }}
         />
         <div
@@ -434,8 +434,10 @@ export default function Teleprompter({
           className="pointer-events-none absolute inset-x-0 z-20 flex items-center"
           style={{ top: `${FOCUS_RATIO * 100}%` }}
         >
+          {/* Brightest at the centre, where the words now are. */}
+          <span className="h-px flex-1 bg-gradient-to-r from-transparent to-accent/45" />
           <span className="h-px w-2.5 bg-accent" />
-          <span className="h-px flex-1 bg-gradient-to-r from-accent/55 via-accent/18 to-transparent" />
+          <span className="h-px flex-1 bg-gradient-to-l from-transparent to-accent/45" />
         </div>
 
         {totalWords > 0 && (
@@ -458,11 +460,16 @@ export default function Teleprompter({
         >
           <div
             ref={contentRef}
-            className="px-[5.5%] will-change-transform"
+            className="mx-auto px-[5.5%] text-center will-change-transform"
             style={{
-              // ~44 characters per line. Long lines mean long eye travel away
-              // from the lens, which defeats the point of a prompter.
-              maxWidth: "22em",
+              // ~28 characters per line, centred under the lens.
+              //
+              // A wide, left-aligned column makes the eyes sweep the full line
+              // and the pupils visibly track left to right, which is exactly
+              // the "reading off a script" look a prompter exists to avoid.
+              // Narrow and centred keeps the reading point nearly stationary,
+              // so the gaze stays on axis.
+              maxWidth: "15em",
               // Lead-in puts the first word on the reading line; run-out lets
               // the last word arrive there exactly as the scroll hits its end.
               paddingTop: `${viewportPx * FOCUS_RATIO}px`,
