@@ -1,119 +1,106 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Modal } from "@/components/ui";
 
 const SITE = "https://akhil-reddy-13.github.io/";
 const REPO = "https://github.com/akhil-reddy-13/cue-teleprompter";
 
-function H({ children }: { children: string }) {
+const linkClass =
+  "font-medium text-accent-soft underline decoration-accent/40 underline-offset-2 transition hover:decoration-accent";
+
+function P({ children }: { children: ReactNode }) {
   return (
-    <h3 className="mt-5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-600">
-      {children}
-    </h3>
+    <p className="mt-3 text-[13px] leading-relaxed text-ink-300">{children}</p>
   );
 }
 
-function P({ children }: { children: React.ReactNode }) {
+/** A labelled build decision: the label is the choice, the body is the why. */
+function Choice({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <p className="mt-2 text-[13px] leading-relaxed text-ink-300">{children}</p>
-  );
-}
-
-/** A labelled build decision. The label is the choice, the body is the why. */
-function Choice({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <li className="mt-2.5">
-      <span className="text-[13px] font-medium text-ink-100">{title}</span>
-      <span className="text-[13px] leading-relaxed text-ink-400"> — {children}</span>
+    <li className="mt-3">
+      <span className="text-[13px] font-medium text-ink-100">{title}:</span>
+      <span className="text-[13px] leading-relaxed text-ink-400">
+        {" "}
+        {children}
+      </span>
     </li>
   );
 }
 
+function Code({ children }: { children: ReactNode }) {
+  return <code className="text-[12.5px] text-ink-300">{children}</code>;
+}
+
 export default function AboutDialog({ onClose }: { onClose: () => void }) {
   return (
-    <Modal title="About" onClose={onClose}>
+    <Modal title="About Cue" onClose={onClose}>
       <P>
-        Hi! I&apos;m Akhil — CS + Math at Stanford. More of my work is at{" "}
-        <a
-          href={SITE}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="font-medium text-accent-soft underline decoration-accent/40 underline-offset-2 hover:decoration-accent"
-        >
-          akhil-reddy-13.github.io
-        </a>
-        .
+        Most web teleprompters make you pick between a greasy $15/mo
+        subscription, a watermark stamped across your forehead, or an app that
+        crashes the second you swap tabs.
+      </P>
+      <P>
+        I kept having to record quick promo videos and got sick of juggling
+        notes on one screen while looking off-camera on the other. Cue is just
+        the clean, free tool that should&apos;ve already existed.
+      </P>
+      <P>
+        No accounts, no paywalls, zero backend. Everything runs locally in your
+        browser&mdash;your footage never leaves your machine because
+        there&apos;s literally nowhere to send it.
       </P>
 
-      <H>Why this exists</H>
-      <P>
-        I kept having to record marketing videos for a club, reading off a
-        script. Doing it meant juggling two screens — notes on one, camera on
-        the other — so my eyes were always off the lens. Every teleprompter app
-        I tried put the useful half behind a paywall or stamped a watermark
-        across my face. So I built the thing I actually wanted.
-      </P>
+      <h3 className="mt-6 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-600">
+        How it works under the hood
+      </h3>
 
-      <H>How it&apos;s built</H>
-      <P>
-        Next.js and React, TypeScript, Tailwind. It is a fully static site:
-        there is no backend, no database, no accounts, and no API keys. Your
-        video is never uploaded, because there is nowhere to upload it to.
-      </P>
-      <ul className="mt-3 list-none">
-        <Choice title="Canvas compositor">
-          every frame is drawn to an offscreen canvas at the exact output size,
-          then <code className="text-ink-300">captureStream(30)</code> feeds
-          that canvas into <code className="text-ink-300">MediaRecorder</code>.
-          Framing is honestly WYSIWYG — the preview is the same pipeline the
-          file comes out of, not an approximation of it.
+      <ul className="mt-1 list-none">
+        <Choice title="True WYSIWYG recording">
+          Frames render directly to an offscreen canvas at the exact export
+          dimensions before feeding <Code>MediaRecorder</Code> via{" "}
+          <Code>captureStream(30)</Code>. What you preview is bit-for-bit what
+          gets written to disk.
         </Choice>
-        <Choice title="MP4 first, WebM fallback">
-          the recorder probes codec support and prefers H.264/AAC, so takes
-          drop straight into Photos, Premiere, or the TikTok uploader with no
-          conversion step. Firefox can&apos;t mux that, so it gets WebM.
+        <Choice title="Smart codec probing">
+          Prioritizes native H.264/AAC MP4 so takes drop straight into Premiere,
+          Photos, or short-form feeds without transcoding, gracefully falling
+          back to WebM where muxing isn&apos;t supported.
         </Choice>
-        <Choice title="Aspect changes retune the live track">
-          switching 16:9 to 9:16 calls{" "}
-          <code className="text-ink-300">applyConstraints</code> on the
-          existing camera track instead of tearing the stream down — no black
-          flash and no second permission prompt.
+        <Choice title="Seamless aspect swaps">
+          Toggling between 16:9 and 9:16 reconfigures constraints directly on
+          the active media track instead of tearing the stream down&mdash;no
+          black screen flash, no re-prompting for camera permissions.
         </Choice>
-        <Choice title="Scrolling in words per minute">
-          wpm is the unit a person can reason about, so the prompter converts
-          it to pixels using the script&apos;s own measured layout. The same
-          setting reads the same on a phone and a laptop. The lead-in and
-          run-out are sized from the panel height, which is what makes the last
-          line land exactly on the reading line.
+        <Choice title="Layout-aware scrolling">
+          Speed is calibrated in words per minute rather than arbitrary pixels,
+          converting dynamically against your screen&apos;s measured typography
+          so cadence stays consistent across devices.
         </Choice>
-        <Choice title="Follow my voice">
-          the Web Speech API transcribes as you talk; the last nine words are
-          fuzzy-matched against a window of the script around your current
-          position, scoring exact hits and shared word stems. A confidence
-          floor means a mis-hearing is discarded rather than obeyed, and the
-          correction is velocity-clamped so it can never run away from you.
+        <Choice title="Speech tracking">
+          Leverages the Web Speech API to fuzzy-match live transcriptions
+          against a localized script window. Misheard inputs are rejected via
+          confidence thresholds, and correction velocity is clamped to keep the
+          scroll from jerking around.
         </Choice>
-        <Choice title="One audio track, built only when needed">
-          mic and shared system audio get summed through a WebAudio graph, but
-          only when there are genuinely two sources. A lone mic track is passed
-          through untouched rather than resampled for no reason.
+        <Choice title="Minimal WebAudio graph">
+          Mic audio is passed through raw by default; a summing node is only
+          spun up if system audio is actively captured alongside it.
         </Choice>
       </ul>
 
-      <H>Source</H>
-      <P>
-        The code is on{" "}
-        <a
-          href={REPO}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="font-medium text-accent-soft underline decoration-accent/40 underline-offset-2 hover:decoration-accent"
-        >
-          GitHub
+      <P>Built with Next.js, React, TypeScript, and Tailwind.</P>
+
+      <p className="mt-5 border-t border-ink-850 pt-4 text-[13px] text-ink-400">
+        &mdash;{" "}
+        <a href={SITE} target="_blank" rel="noreferrer noopener" className={linkClass}>
+          Akhil
+        </a>{" "}
+        <span className="text-ink-700">/</span>{" "}
+        <a href={REPO} target="_blank" rel="noreferrer noopener" className={linkClass}>
+          Source on GitHub
         </a>
-        , including the browser test suite that drives real recordings and
-        checks the bytes that come out.
-      </P>
+      </p>
     </Modal>
   );
 }
